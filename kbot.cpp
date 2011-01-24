@@ -31,6 +31,11 @@ KBot::KBot(void)
 	m_pAutonomousController = new AutonomousController(this, "test.dat");
 	
 	m_pGyro = new Gyro(1);
+	
+	m_vecX.resize(1);
+	m_vecY.resize(1);
+	m_vecR.resize(1);
+	
 }
 
 /*!
@@ -167,22 +172,26 @@ void KBot::ReadSensors()
 void KBot::ComputeActuators(Controller* pController)
 {
 	m_vecX[0] = -pController->GetAxis(0);
-	m_vecY[0] = -pController->GetAxis(1);
+	m_vecY[0]  = -pController->GetAxis(1);
 	float zIn = -pController->GetAxis(2);
 	float fRotationFactor = 0.02f;
-	m_vecR[0] = fRotationFactor*m_vecAnalogSensors[GYRO];
+	float fGyro = fRotationFactor*m_vecAnalogSensors[GYRO];
 	
 	if (fabs(zIn) > 0.1f)
 	{
 		m_pGyro->Reset();
 		m_vecR[0] = zIn;
 	}
+	else
+	{
+		m_vecR[0] = fGyro;
+	}
 }
 
 void KBot::UpdateActuators()
 {
 	UINT8 syncGroup = 0x80;
-
+	
 	float fX = std::accumulate(m_vecX.begin(), m_vecX.end(), 0.0f);
 	float fY = std::accumulate(m_vecY.begin(), m_vecY.end(), 0.0f);
 	float fR = std::accumulate(m_vecR.begin(), m_vecR.end(), 0.0f);
