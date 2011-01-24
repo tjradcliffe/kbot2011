@@ -5,6 +5,9 @@
 #include "autonomous_controller.h"
 #include "teleop_controller.h"
 
+// standard includes
+#include <numeric>
+
 /*!
 The constructor builds everything
 */
@@ -163,35 +166,38 @@ void KBot::ReadSensors()
 
 void KBot::ComputeActuators(Controller* pController)
 {
-	double xIn = -pController->GetAxis(0);
-	double yIn = -pController->GetAxis(1);
-	double zIn = -pController->GetAxis(2);
-	double fRotationFactor = 0.02;
-	float rotation = fRotationFactor*m_vecAnalogSensors[GYRO];
+	m_vecX[0] = -pController->GetAxis(0);
+	m_vecY[0] = -pController->GetAxis(1);
+	float zIn = -pController->GetAxis(2);
+	float fRotationFactor = 0.02f;
+	m_vecR[0] = fRotationFactor*m_vecAnalogSensors[GYRO];
 	
-	if (fabs(zIn)> 0.1)
+	if (fabs(zIn) > 0.1f)
 	{
 		m_pGyro->Reset();
-		rotation = zIn;
+		m_vecR[0] = zIn;
 	}
-	
-	double wheelSpeeds[4];
-	m_vecWheelSpeeds[0] = xIn + yIn + rotation;
-	m_vecWheelSpeeds[1] = -xIn + yIn - rotation;
-	m_vecWheelSpeeds[2] = -xIn + yIn + rotation;
-	m_vecWheelSpeeds[3] = xIn + yIn - rotation;
-
-	Normalize(wheelSpeeds);
 }
 
 void KBot::UpdateActuators()
 {
 	UINT8 syncGroup = 0x80;
+
+	float fX = std::accumulate(m_vecX.begin(), m_vecX.end(), 0.0f);
+	float fY = std::accumulate(m_vecY.begin(), m_vecY.end(), 0.0f);
+	float fR = std::accumulate(m_vecR.begin(), m_vecR.end(), 0.0f);
 	
-	m_pLeftJaguarFront->Set(m_vecWheelSpeeds[0]*100.0 , syncGroup);
-	m_pRightJaguarFront->Set(m_vecWheelSpeeds[1]*100.0 , syncGroup);
-	m_pRightJaguarBack->Set(m_vecWheelSpeeds[2]*100.0, syncGroup);
-	m_pLeftJaguarBack->Set(m_vecWheelSpeeds[3]*100.0 , syncGroup);
+	double wheelSpeeds[4];
+	wheelSpeeds[0] = fX + fY + fR;
+	wheelSpeeds[1] = -fX + fY - fR;
+	wheelSpeeds[2] = -fX + fY + fR;
+	wheelSpeeds[3] = fX + fY - fR;
+
+	Normalize(wheelSpeeds);
+	m_pLeftJaguarFront->Set(wheelSpeeds[0]*100.0 , syncGroup);
+	m_pRightJaguarFront->Set(wheelSpeeds[1]*100.0 , syncGroup);
+	m_pRightJaguarBack->Set(wheelSpeeds[2]*100.0, syncGroup);
+	m_pLeftJaguarBack->Set(wheelSpeeds[3]*100.0 , syncGroup);
 
 	CANJaguar::UpdateSyncGroup(syncGroup);
 }

@@ -94,8 +94,14 @@ private:
 	int m_nAnalogSensorNumber;
 	std::vector<float> m_vecAnalogSensors;
 	
-	//! Wheel speeds
-	std::vector<float> m_vecWheelSpeeds;
+	//! X-direction update values from various sources
+	std::vector<float> m_vecX;
+	
+	//! Y-direction update values from various sources
+	std::vector<float> m_vecY;
+	
+	//! rotation update values from various sources
+	std::vector<float> m_vecR;
 	
 	//! Motor controllers
 	CANJaguar *m_pLeftJaguarFront;
