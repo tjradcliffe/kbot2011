@@ -31,6 +31,7 @@ KBot::KBot(void)
 	m_pAutonomousController = new AutonomousController(this, "test.dat");
 	
 	m_pGyro = new Gyro(1);
+	m_fGyroSetPoint = 0.0f;
 	
 	m_vecX.resize(1);
 	m_vecY.resize(1);
@@ -46,7 +47,8 @@ void KBot::ResetRobot(bool bRecordTeleop)
 {
 	GetWatchdog().SetEnabled(true);
 
-	m_pGyro->Reset();	
+	m_pGyro->Reset();	// reset gyro and setpoint
+	m_fGyroSetPoint = m_pGyro->GetAngle();
 	
 	if (bRecordTeleop)
 	{
@@ -99,6 +101,8 @@ void KBot::RobotInit()
 	m_pLeftJaguarBack->EnableControl();
 	m_pRightJaguarFront->EnableControl();
 	m_pRightJaguarBack->EnableControl();
+	
+	m_vecAnalogSensors[GYRO] = m_pGyro->GetAngle();
 }
 
 /*!
@@ -175,16 +179,16 @@ void KBot::ComputeActuators(Controller* pController)
 	m_vecY[0]  = -pController->GetAxis(1);
 	float zIn = -pController->GetAxis(2);
 	float fRotationFactor = 0.02f;
-	float fGyro = fRotationFactor*m_vecAnalogSensors[GYRO];
+	float fGyroRotation = fRotationFactor*(m_vecAnalogSensors[GYRO]-m_fGyroSetPoint);
 	
 	if (fabs(zIn) > 0.1f)
 	{
-		m_pGyro->Reset();
+		m_fGyroSetPoint = m_vecAnalogSensors[GYRO];
 		m_vecR[0] = zIn;
 	}
 	else
 	{
-		m_vecR[0] = fGyro;
+		m_vecR[0] = fGyroRotation;
 	}
 }
 

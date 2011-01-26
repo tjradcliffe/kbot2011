@@ -111,6 +111,7 @@ private:
 
 	// The gyro is used for maintaining orientation
 	Gyro *m_pGyro;
+	float m_fGyroSetPoint;
 	
 	// Declare variables for the controllers
 	TeleopController *m_pTeleopController;
