@@ -11,6 +11,8 @@
 // local forward declarations
 class AutonomousController;
 class Controller;
+class I2C_Ultrasound;
+class DistanceSensor;
 class TeleopController;
 
 // Sensor identifiers
@@ -85,6 +87,7 @@ protected:
 	void UpdateActuators();
 
 private:
+	static const int kPeriodicSpeed;
 	
 	//! Digital sensors
 	int m_nDigitalSensorNumber;
@@ -112,6 +115,12 @@ private:
 	// The gyro is used for maintaining orientation
 	Gyro *m_pGyro;
 	float m_fGyroSetPoint;
+	
+	// I2C ultrasound sensor
+	I2C_Ultrasound* m_pUltrasound;
+	
+	// Analog distance sensor
+	DistanceSensor* m_pDistanceSensor;
 	
 	// Declare variables for the controllers
 	TeleopController *m_pTeleopController;

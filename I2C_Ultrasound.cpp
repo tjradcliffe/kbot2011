@@ -22,9 +22,11 @@ const UINT8 I2C_Ultrasound::kRangeModeCentimeters = 0x51;
 const UINT8 I2C_Ultrasound::kRangeModeMicroseconds = 0x52;
 
 const UINT8 I2C_Ultrasound::kChangeAddressStep1 = 0xA0;
-const UINT8 I2C_Ultrasound::kChangeAddressStep2 = 0xA5;
-const UINT8 I2C_Ultrasound::kChangeAddressStep3 = 0xAA;
-	
+const UINT8 I2C_Ultrasound::kChangeAddressStep2 = 0xAA;
+const UINT8 I2C_Ultrasound::kChangeAddressStep3 = 0xA5;
+
+const UINT8 I2C_Ultrasound::kMaxRange = 140;
+
 const UINT8 I2C_Ultrasound::kSetGain40 = 0x01;
 const UINT8 I2C_Ultrasound::kSetGain50 = 0x01;
 const UINT8 I2C_Ultrasound::kSetGain60 = 0x03;
@@ -47,10 +49,10 @@ const UINT8 I2C_Ultrasound::kSetGain700 = 0x10;
  * 
  * @param slot The slot of the digital module that the sensor is plugged into.
  */
-I2C_Ultrasound::I2C_Ultrasound(UINT32 slot)
+I2C_Ultrasound::I2C_Ultrasound()
 	: m_i2c (NULL)
 {
-	DigitalModule *module = DigitalModule::GetInstance(slot);
+	DigitalModule *module = DigitalModule::GetInstance(4);
 	if (module)
 	{
 		m_i2c = module->GetI2C(kAddress);
@@ -67,10 +69,61 @@ I2C_Ultrasound::~I2C_Ultrasound()
 }
 
 /**
-Return the distance in cm
+ * Ping (in cm units)
+ *
+ */
+void I2C_Ultrasound::Ping()
+{
+	if (m_i2c)
+	{
+		m_i2c->Write(kCommandRegister, kRangeModeCentimeters);
+	}
+}
 
-@return distance in cm
-*/
+/**
+ * Set sensor's Range value
+ *
+ */
+void I2C_Ultrasound::SetRange(UINT8 range)
+{
+	if (m_i2c)
+	{
+		m_i2c->Write(kRangeRegister, range);
+	}
+}
+
+/**
+ * Set sensor's Maximum Gain value
+ *
+ */
+void I2C_Ultrasound::SetMaxGain(UINT8 maxGain)
+{
+	if (m_i2c)
+	{
+		m_i2c->Write(kMaxGainRegister, maxGain);
+	}
+}
+
+/**
+ * Set sensor's I2C address
+ *
+ */
+void I2C_Ultrasound::SetI2CAddress(UINT8 address)
+{
+	if (m_i2c)
+	{
+		m_i2c->Write(kCommandRegister, kChangeAddressStep1);
+		m_i2c->Write(kCommandRegister, kChangeAddressStep2);
+		m_i2c->Write(kCommandRegister, kChangeAddressStep3);
+		m_i2c->Write(kCommandRegister, address);
+	}
+}
+
+/**
+ * Return the distance in cm
+ *
+ * @return distance in cm
+ */
 float I2C_Ultrasound::GetDistance()
 {
 	UINT16 distance = 0;

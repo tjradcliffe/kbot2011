@@ -3,10 +3,17 @@
 
 // local includes
 #include "autonomous_controller.h"
+#include "I2C_Ultrasound.h"
+#include "DistanceSensor.h"
 #include "teleop_controller.h"
+
+// FRC includes
+#include "I2C.h"
 
 // standard includes
 #include <numeric>
+
+const int KBot::kPeriodicSpeed = 200; // Speed of periodic loops in Hz
 
 /*!
 The constructor builds everything
@@ -14,6 +21,8 @@ The constructor builds everything
 KBot::KBot(void)
 {
 	std::cerr << "In Constructor" << std::endl;
+	IterativeRobot::SetPeriod(1.0/kPeriodicSpeed);
+	std::cerr << "Periodic rate ="<< IterativeRobot::GetLoopsPerSec() << " loops per second." << std::endl;
 	
 	// Create a robot using standard right/left robot drive on PWMS 1, 2, 3, and #4
 	m_pLeftJaguarFront = new CANJaguar(3, CANJaguar::kSpeed);
@@ -30,8 +39,15 @@ KBot::KBot(void)
 	m_pTeleopController = new TeleopController("test.dat");
 	m_pAutonomousController = new AutonomousController(this, "test.dat");
 	
+	// gyro
 	m_pGyro = new Gyro(1);
 	m_fGyroSetPoint = 0.0f;
+
+	// ultrasounds
+	m_pUltrasound = new I2C_Ultrasound();
+	
+	// analog distance sensors
+	m_pDistanceSensor = new DistanceSensor(2);
 	
 	m_vecX.resize(1);
 	m_vecY.resize(1);
@@ -103,6 +119,11 @@ void KBot::RobotInit()
 	m_pRightJaguarBack->EnableControl();
 	
 	m_vecAnalogSensors[GYRO] = m_pGyro->GetAngle();
+	
+	m_pUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
+	m_pUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
+	
+	m_pDistanceSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 }
 
 /*!
@@ -134,9 +155,25 @@ void KBot::TeleopInit()
 
 void KBot::DisabledPeriodic(void)  
 {
-	// Runs at 200 Hz
+	static int nCount = 0;
+	
 	// feed the user watchdog at every period when disabled
 	GetWatchdog().Feed();
+
+	if (1 == nCount)
+	{
+		m_pUltrasound->Ping();
+		std::cerr <<m_pDistanceSensor->GetVoltage() << "   " << m_pDistanceSensor->GetDistance() << "   ";
+	}
+	else if (14 == nCount)
+	{
+		std::cerr << m_pUltrasound->GetDistance() << std::endl;
+	}
+	else if (100 == nCount)
+	{
+		nCount = 0;
+	}
+	++nCount;
 }
 
 /**

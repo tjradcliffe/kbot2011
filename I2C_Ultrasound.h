@@ -23,25 +23,15 @@ class I2C;
 class I2C_Ultrasound : public SensorBase
 {
 public:
-	explicit I2C_Ultrasound(UINT32 slot);
+	explicit I2C_Ultrasound();
 	virtual ~I2C_Ultrasound();
 	float GetDistance();
+	void Ping();
+	void SetRange(UINT8 range);
+	void SetMaxGain(UINT8 maxGain);
+	void SetI2CAddress(UINT8 address);
 
-private:
-	static const UINT8 kAddress;
-	static const UINT8 kCommandRegister;
-	static const UINT8 kMaxGainRegister;
-	static const UINT8 kRangeRegister;
-	static const UINT8 kRangeHighByteRegister;
-	static const UINT8 kRangeLowByteRegister;	
-
-	static const UINT8 kRangeModeInches;
-	static const UINT8 kRangeModeCentimeters;
-	static const UINT8 kRangeModeMicroseconds;
-
-	static const UINT8 kChangeAddressStep1;
-	static const UINT8 kChangeAddressStep2;
-	static const UINT8 kChangeAddressStep3;
+	static const UINT8 kMaxRange;
 	
 	static const UINT8 kSetGain40;
 	static const UINT8 kSetGain50;
@@ -59,6 +49,22 @@ private:
 	static const UINT8 kSetGain500;
 	static const UINT8 kSetGain600;
 	static const UINT8 kSetGain700;
+
+private:
+	static const UINT8 kAddress;
+	static const UINT8 kCommandRegister;
+	static const UINT8 kMaxGainRegister;
+	static const UINT8 kRangeRegister;
+	static const UINT8 kRangeHighByteRegister;
+	static const UINT8 kRangeLowByteRegister;	
+
+	static const UINT8 kRangeModeInches;
+	static const UINT8 kRangeModeCentimeters;
+	static const UINT8 kRangeModeMicroseconds;
+
+	static const UINT8 kChangeAddressStep1;
+	static const UINT8 kChangeAddressStep2;
+	static const UINT8 kChangeAddressStep3;
 
 	I2C* m_i2c;
 };
