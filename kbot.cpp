@@ -49,9 +49,9 @@ KBot::KBot(void)
 	// analog distance sensors
 	m_pDistanceSensor = new DistanceSensor(2);
 	
-	m_vecX.resize(1);
-	m_vecY.resize(1);
-	m_vecR.resize(1);
+	m_vecX.resize(2);
+	m_vecY.resize(2);
+	m_vecR.resize(2);
 	
 }
 
@@ -221,32 +221,49 @@ void KBot::ReadSensors()
 	m_vecAnalogSensors[GYRO] = m_pGyro->GetAngle();
 }
 
-void KBot::ComputeActuators(Controller* pController)
+void KBot::ComputeControllerXYR(Controller* pController)
 {
 	m_vecX[0] = -pController->GetAxis(0);
 	m_vecY[0]  = -pController->GetAxis(1);
-	float zIn = pController->GetAxis(2);
+	m_vecR[0] = pController->GetAxis(2);	
+	m_vecWeight[0] = 1.0f;
+}
+
+void KBot::ComputeGyroXYR()
+{
+	m_vecX[1] = m_vecX[0];	// copy stick values to get them if gyro 
+	m_vecY[1]  = m_vecX[0];	//   has control
 	float fRotationFactor = 0.02f;
-	float fGyroRotation = fRotationFactor*(m_vecAnalogSensors[GYRO]-m_fGyroSetPoint);
-	
-	if (fabs(zIn) > 0.1f)
+	m_vecR[1] = fRotationFactor*(m_vecAnalogSensors[GYRO]-m_fGyroSetPoint);	
+	if (fabs(m_vecR[0]) > 0.1f)	// let stick have control
 	{
 		m_fGyroSetPoint = m_vecAnalogSensors[GYRO];
-		m_vecR[0] = zIn;
+		m_vecWeight[1] = 0.0f;
 	}
-	else
+	else						// let gyro have control
 	{
-		m_vecR[0] = fGyroRotation;
+		m_vecWeight[1] = 1.0f;
+		m_vecWeight[0] = 0.0f;		
 	}
+}
+
+void KBot::ComputeActuators(Controller* pController)
+{
+	ComputeControllerXYR(pController);
+	ComputeGyroXYR();
 }
 
 void KBot::UpdateActuators()
 {
-	UINT8 syncGroup = 0x80;
-	
-	float fX = std::accumulate(m_vecX.begin(), m_vecX.end(), 0.0f);
-	float fY = std::accumulate(m_vecY.begin(), m_vecY.end(), 0.0f);
-	float fR = std::accumulate(m_vecR.begin(), m_vecR.end(), 0.0f);
+	float fX = 0.0f;
+	float fY = 0.0f;
+	float fR = 0.0f;
+	for(unsigned int nIndex = 0; nIndex < m_vecWeight.size(); ++nIndex)
+	{
+		fX += m_vecWeight[nIndex]*m_vecX[nIndex];
+		fY += m_vecWeight[nIndex]*m_vecY[nIndex];
+		fR += m_vecWeight[nIndex]*m_vecR[nIndex];
+	}
 	
 	double wheelSpeeds[4];
 	wheelSpeeds[0] = fX + fY + fR;
@@ -262,13 +279,14 @@ void KBot::UpdateActuators()
 			wheelSpeeds[i] = 0.0;
 		}
 	}
-
 	Normalize(wheelSpeeds);
+
+	// actually set speeds
+	UINT8 syncGroup = 0x80;	
 	m_pLeftJaguarFront->Set(wheelSpeeds[0]*100.0 , syncGroup);
 	m_pRightJaguarFront->Set(wheelSpeeds[1]*100.0 , syncGroup);
 	m_pRightJaguarBack->Set(wheelSpeeds[2]*100.0, syncGroup);
 	m_pLeftJaguarBack->Set(wheelSpeeds[3]*100.0 , syncGroup);
-
 	CANJaguar::UpdateSyncGroup(syncGroup);
 }
 

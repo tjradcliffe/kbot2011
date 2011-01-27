@@ -83,6 +83,12 @@ protected:
 	//! Compute actuator inputs
 	void ComputeActuators(Controller* pController);
 	
+	// Compute controller inputs and weight
+	void ComputeControllerXYR(Controller* pController);
+	
+	// Compute gyro inputs and weight
+	void ComputeGyroXYR();
+	
 	//! Actually update the actuators
 	void UpdateActuators();
 
@@ -105,6 +111,9 @@ private:
 	
 	//! rotation update values from various sources
 	std::vector<float> m_vecR;
+	
+	//! Weight vector (appliesto x/y/r from each source)
+	std::vector<float> m_vecWeight;
 	
 	//! Motor controllers
 	CANJaguar *m_pLeftJaguarFront;
