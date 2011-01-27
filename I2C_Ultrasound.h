@@ -23,7 +23,7 @@ class I2C;
 class I2C_Ultrasound : public SensorBase
 {
 public:
-	explicit I2C_Ultrasound();
+	explicit I2C_Ultrasound(UINT8 address);
 	virtual ~I2C_Ultrasound();
 	float GetDistance();
 	void Ping();
@@ -51,7 +51,7 @@ public:
 	static const UINT8 kSetGain700;
 
 private:
-	static const UINT8 kAddress;
+	static const UINT8 kDefaultAddress;
 	static const UINT8 kCommandRegister;
 	static const UINT8 kMaxGainRegister;
 	static const UINT8 kRangeRegister;

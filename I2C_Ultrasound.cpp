@@ -9,8 +9,9 @@
 #include "I2C.h"
 #include "Utility.h"
 #include "WPIStatus.h"
+#include "iostream.h"
 
-const UINT8 I2C_Ultrasound::kAddress = 0xE0;
+const UINT8 I2C_Ultrasound::kDefaultAddress = 0xE0;
 const UINT8 I2C_Ultrasound::kCommandRegister = 0x00;
 const UINT8 I2C_Ultrasound::kMaxGainRegister = 0x01;
 const UINT8 I2C_Ultrasound::kRangeRegister = 0x02;
@@ -49,13 +50,13 @@ const UINT8 I2C_Ultrasound::kSetGain700 = 0x10;
  * 
  * @param slot The slot of the digital module that the sensor is plugged into.
  */
-I2C_Ultrasound::I2C_Ultrasound()
+I2C_Ultrasound::I2C_Ultrasound(UINT8 address = kDefaultAddress)
 	: m_i2c (NULL)
 {
 	DigitalModule *module = DigitalModule::GetInstance(4);
 	if (module)
 	{
-		m_i2c = module->GetI2C(kAddress);
+		m_i2c = module->GetI2C(address);
 	}
 }
 
@@ -126,6 +127,8 @@ void I2C_Ultrasound::SetI2CAddress(UINT8 address)
  */
 float I2C_Ultrasound::GetDistance()
 {
+	static UINT16 lastDistance = 0;
+	static int badCount = 0;
 	UINT16 distance = 0;
 	UINT8 data = 0;
 	if (m_i2c)
@@ -134,7 +137,24 @@ float I2C_Ultrasound::GetDistance()
 		distance = data << 8;
 		m_i2c->Read(kRangeLowByteRegister, 1, &data);
 		distance += data;
+		if (0 == distance || 255 == distance)
+		{
+			if (++badCount<=5)
+			{
+				std::cerr << "*";
+				distance = lastDistance;
+			}
+			else
+			{
+				distance = 0;
+			}
+		}
+		else
+		{
+			badCount = 0;
+		}
 	}
+	lastDistance = distance;
 	return (float)distance;
 }
 

@@ -44,7 +44,7 @@ KBot::KBot(void)
 	m_fGyroSetPoint = 0.0f;
 
 	// ultrasounds
-	m_pUltrasound = new I2C_Ultrasound();
+	m_pUltrasound = new I2C_Ultrasound(0xE2);
 	
 	// analog distance sensors
 	m_pDistanceSensor = new DistanceSensor(2);
@@ -123,6 +123,11 @@ void KBot::RobotInit()
 	m_pUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
 	m_pUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
 	
+	// Reprogram Ultrasound's I2C address:
+	//   Create the Ultrasound with an address of E0 (for an unprogrammed Ultrasound)
+	//   then call this method to reprogram it.
+	//m_pUltrasound->SetI2CAddress(0xe2);
+	
 	m_pDistanceSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 }
 
@@ -191,10 +196,16 @@ void KBot::AutonomousPeriodic(void)
  */
 void KBot::TeleopPeriodic(void) 
 {
+	static int nCount=0;
+	
 	//std::cerr << "operator control" << std::endl;
 	GetWatchdog().Feed();
 	
-	RunRobot(m_pTeleopController);
+	if (++nCount == 4)
+	{
+		RunRobot(m_pTeleopController);
+		nCount=0;
+	}
 }
 
 void KBot::RunRobot(Controller* pController)
@@ -214,7 +225,7 @@ void KBot::ComputeActuators(Controller* pController)
 {
 	m_vecX[0] = -pController->GetAxis(0);
 	m_vecY[0]  = -pController->GetAxis(1);
-	float zIn = -pController->GetAxis(2);
+	float zIn = pController->GetAxis(2);
 	float fRotationFactor = 0.02f;
 	float fGyroRotation = fRotationFactor*(m_vecAnalogSensors[GYRO]-m_fGyroSetPoint);
 	
@@ -242,6 +253,15 @@ void KBot::UpdateActuators()
 	wheelSpeeds[1] = -fX + fY - fR;
 	wheelSpeeds[2] = -fX + fY + fR;
 	wheelSpeeds[3] = fX + fY - fR;
+	
+	// Deadband on wheels:
+	for (int i=0; i<4; i++)
+	{
+		if (fabs(wheelSpeeds[i])<0.05)
+		{
+			wheelSpeeds[i] = 0.0;
+		}
+	}
 
 	Normalize(wheelSpeeds);
 	m_pLeftJaguarFront->Set(wheelSpeeds[0]*100.0 , syncGroup);
