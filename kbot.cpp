@@ -48,11 +48,14 @@ KBot::KBot(void)
 	
 	// analog distance sensors
 	m_pDistanceSensor = new DistanceSensor(2);
-	
-	m_vecX.resize(2);
-	m_vecY.resize(2);
-	m_vecR.resize(2);
-	
+
+	int nNumberOfInputs = 2;	// make room for x/y/r and weights
+	m_vecX.resize(nNumberOfInputs);
+	m_vecY.resize(nNumberOfInputs);
+	m_vecR.resize(nNumberOfInputs);
+	m_vecWeightX.resize(nNumberOfInputs);
+	m_vecWeightY.resize(nNumberOfInputs);
+	m_vecWeightR.resize(nNumberOfInputs);
 }
 
 /*!
@@ -226,24 +229,24 @@ void KBot::ComputeControllerXYR(Controller* pController)
 	m_vecX[0] = -pController->GetAxis(0);
 	m_vecY[0]  = -pController->GetAxis(1);
 	m_vecR[0] = pController->GetAxis(2);	
-	m_vecWeight[0] = 1.0f;
+	m_vecWeightX[0] = 1.0f;
+	m_vecWeightY[0] = 1.0f;
+	m_vecWeightR[0] = 1.0f;
 }
 
 void KBot::ComputeGyroXYR()
 {
-	m_vecX[1] = m_vecX[0];	// copy stick values to get them if gyro 
-	m_vecY[1]  = m_vecX[0];	//   has control
 	float fRotationFactor = 0.02f;
 	m_vecR[1] = fRotationFactor*(m_vecAnalogSensors[GYRO]-m_fGyroSetPoint);	
 	if (fabs(m_vecR[0]) > 0.1f)	// let stick have control
 	{
 		m_fGyroSetPoint = m_vecAnalogSensors[GYRO];
-		m_vecWeight[1] = 0.0f;
+		m_vecWeightR[1] = 0.0f;
 	}
 	else						// let gyro have control
 	{
-		m_vecWeight[1] = 1.0f;
-		m_vecWeight[0] = 0.0f;		
+		m_vecWeightR[1] = 1.0f;
+		m_vecWeightR[0] = 0.0f;		
 	}
 }
 
@@ -258,11 +261,11 @@ void KBot::UpdateActuators()
 	float fX = 0.0f;
 	float fY = 0.0f;
 	float fR = 0.0f;
-	for(unsigned int nIndex = 0; nIndex < m_vecWeight.size(); ++nIndex)
+	for(unsigned int nIndex = 0; nIndex < m_vecWeightX.size(); ++nIndex)
 	{
-		fX += m_vecWeight[nIndex]*m_vecX[nIndex];
-		fY += m_vecWeight[nIndex]*m_vecY[nIndex];
-		fR += m_vecWeight[nIndex]*m_vecR[nIndex];
+		fX += m_vecWeightX[nIndex]*m_vecX[nIndex];
+		fY += m_vecWeightY[nIndex]*m_vecY[nIndex];
+		fR += m_vecWeightR[nIndex]*m_vecR[nIndex];
 	}
 	
 	double wheelSpeeds[4];

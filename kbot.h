@@ -113,7 +113,9 @@ private:
 	std::vector<float> m_vecR;
 	
 	//! Weight vector (appliesto x/y/r from each source)
-	std::vector<float> m_vecWeight;
+	std::vector<float> m_vecWeightX;
+	std::vector<float> m_vecWeightY;
+	std::vector<float> m_vecWeightR;
 	
 	//! Motor controllers
 	CANJaguar *m_pLeftJaguarFront;
