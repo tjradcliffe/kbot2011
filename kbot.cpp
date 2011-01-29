@@ -174,7 +174,7 @@ void KBot::DisabledPeriodic(void)
 }
 
 /**
- * Drive left & right motors for 2 seconds then stop
+Called on a clock during autonomous
  */
 void KBot::AutonomousPeriodic(void)
 {
@@ -184,7 +184,7 @@ void KBot::AutonomousPeriodic(void)
 }
 
 /**
- * Runs the motors with arcade steering. 
+ Called on a clock during teleop
  */
 void KBot::TeleopPeriodic(void) 
 {
@@ -203,6 +203,11 @@ void KBot::RunRobot(Controller* pController)
 	UpdateActuators();		// set the motor and actuator states	
 }
 
+/*!
+Read or ping the ultrasounds, depending on where we are
+in an internal loop.  They are pinged at different times,
+which may create issues with the control logic.
+*/
 void KBot::ReadUltrasoundSensors()
 {
 	static int nUltrasoundCount = 0;
@@ -233,6 +238,11 @@ void KBot::ReadUltrasoundSensors()
 	
 }
 
+/*!
+Read all the sensors, at least conceptually.  Some of them,
+like the ultrasounds, don't get read every time due to 
+ping delays.
+*/
 void KBot::ReadSensors()
 {
 	//*********ANALOG SENSORS************
@@ -255,30 +265,59 @@ void KBot::ReadSensors()
 	
 }
 
+/*!
+Compute the XYR for the controller.  If we have a program
+button for "move-to-wall", say, this is where it will be
+implemented for computing the desired action, rather than
+using the stick values (which is the default)
+*/
 void KBot::ComputeControllerXYR(Controller* pController)
 {
-	m_mapX[knDriverInput] = -pController->GetAxis(0);
-	m_mapY[knDriverInput]  = -pController->GetAxis(1);
-	m_mapR[knDriverInput] = pController->GetAxis(2);	
+	m_mapX[knDriverInput] = -pController->GetAxis(knX);
+	m_mapY[knDriverInput]  = -pController->GetAxis(knY);
+	m_mapR[knDriverInput] = pController->GetAxis(knR);	
+	if (pController->GetButton(knMoveToWall))
+	{
+		// implement move-to-wall logic based on sensors here
+	}
+	else if (pController->GetButton(knStrafe))
+	{
+		// implement strafing logic here
+	}
 }
 
+/*!
+Compute the rotation we want based on gyroscopic station-keeping
+*/
 void KBot::ComputeGyroXYR()
 {
 	m_mapR[knGyroTracking] = kfRotationFactor*(m_mapAnalogSensors[knGyro]-m_fGyroSetPoint);	
 }
 
+/*!
+Compute what we want the robot to do in terms of XYR for the
+main body and angle, wrist and roller state for the arm.
+*/
 void KBot::ComputeActuators(Controller* pController)
 {
 	ComputeControllerXYR(pController);
 	ComputeGyroXYR();
 }
 
+/*!
+This is where the other half of the modal logic lives.  Some of
+it is in the ComputeControllerXYR() based on what buttons are 
+pushed, and some of it is here, based on the same thing.  The
+reason for splitting these two aspects is that we have all
+the information we need at this point to make true modal decisions,
+some of which may require us to over-ride other decsions here.
+*/
 void KBot::ComputeWeights(Controller* pController)
 {
 	m_mapWeightX[knDriverInput] = 1.0f;	// assume driver full control
 	m_mapWeightY[knDriverInput] = 1.0f;
 	m_mapWeightR[knDriverInput] = 1.0f;
-	
+
 	m_mapWeightX[knGyroTracking] = 0.0f; // assume no input from gyro
 	m_mapWeightY[knGyroTracking] = 0.0f;
 	m_mapWeightR[knGyroTracking] = 0.0f;

@@ -1,6 +1,16 @@
 #ifndef MAPPINGS_H
 #define MAPPINGS_H
 
+//! Button indices (not an enum for type purposes)
+const int knMoveToWall = 3;
+const int knStrafe = 4;
+
+
+//! Axis mappings
+const int knX = 0;
+const int knY = 1;
+const int knR = 2;
+
 //! The JAG ids for the various motors
 enum MotorMappings
 {
