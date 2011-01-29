@@ -1,11 +1,15 @@
 #ifndef KBOT_H
 #define KBOT_H
 
+// local includes
+#include "mappings.h"
+
 // Framework includes
 #include "Gyro.h"
 #include "WPILib.h"
 
 // Standard includes (old-style x.h files => cx files)
+#include <map>
 #include <cmath>
 
 // local forward declarations
@@ -14,9 +18,6 @@ class Controller;
 class I2C_Ultrasound;
 class DistanceSensor;
 class TeleopController;
-
-// Sensor identifiers
-#define GYRO 0
 
 /*!
 The main robot class.  This is where almost all of the work gets
@@ -71,14 +72,17 @@ protected:
 	//! Run the robot based on controller state
 	void RunRobot(Controller* pController);
 	
-	//! Normalize all wheel speeds if the magnitude of any wheel is greater than 1.0.
-	void Normalize(double *pfWheelSpeeds);
+	//! Apply deadband and normalize all wheel speeds so max is 1.0
+	void DeadbandNormalize(double *pfWheelSpeeds);
 
 	//! Rotate a vecotr (fX, fY) through angle fAngle degrees
 	void RotateVector(double &fY, double &fX, double fAngle);
 
 	//! Read all the sensors into robot buffers
 	void ReadSensors();
+
+	//! Read the ultrasounds (takes some extra logic for cross-talk etc)
+	void KBot::ReadUltrasoundSensors();
 	
 	//! Compute actuator inputs
 	void ComputeActuators(Controller* pController);
@@ -89,49 +93,61 @@ protected:
 	// Compute gyro inputs and weight
 	void ComputeGyroXYR();
 	
+	//! Compute the weight given each of the inputs
+	void ComputeWeights(Controller* pController);
+	
 	//! Actually update the actuators
 	void UpdateActuators();
 
+	//! Update the wheel speeds
+	void UpdateWheelSpeeds();
+	
+	//! Update the arm and wrist position
+	void UpdateArmPosition();
+	
+	//! Update the roller claw motor speeds
+	void UpdateRollerClaw();
+	
 private:
 	static const int kPeriodicSpeed;
 	
 	//! Digital sensors
-	int m_nDigitalSensorNumber;
-	std::vector<int> m_vecDigitalSensors;
+	std::map<DigitalMapping, float> m_mapDigitalSensors;
 	
 	//! Analog sensors
-	int m_nAnalogSensorNumber;
-	std::vector<float> m_vecAnalogSensors;
+	std::map<AnalogMapping, float> m_mapAnalogSensors;
 	
 	//! X-direction update values from various sources
-	std::vector<float> m_vecX;
+	std::map<CalculationMapping, float> m_mapX;
 	
 	//! Y-direction update values from various sources
-	std::vector<float> m_vecY;
+	std::map<CalculationMapping, float> m_mapY;
 	
 	//! rotation update values from various sources
-	std::vector<float> m_vecR;
+	std::map<CalculationMapping, float> m_mapR;
 	
 	//! Weight vector (appliesto x/y/r from each source)
-	std::vector<float> m_vecWeightX;
-	std::vector<float> m_vecWeightY;
-	std::vector<float> m_vecWeightR;
+	std::map<CalculationMapping, float> m_mapWeightX;
+	std::map<CalculationMapping, float> m_mapWeightY;
+	std::map<CalculationMapping, float> m_mapWeightR;
 	
 	//! Motor controllers
-	CANJaguar *m_pLeftJaguarFront;
-	CANJaguar *m_pLeftJaguarBack;
-	CANJaguar *m_pRightJaguarFront;
-	CANJaguar *m_pRightJaguarBack;
+	CANJaguar *m_pLeftFrontJaguar;
+	CANJaguar *m_pLeftBackJaguar;
+	CANJaguar *m_pRightFrontJaguar;
+	CANJaguar *m_pRightBackJaguar;
 
 	// The gyro is used for maintaining orientation
 	Gyro *m_pGyro;
 	float m_fGyroSetPoint;
 	
-	// I2C ultrasound sensor
-	I2C_Ultrasound* m_pUltrasound;
+	// I2C ultrasound sensors
+	I2C_Ultrasound* m_pLeftUltrasound;
+	I2C_Ultrasound* m_pRightUltrasound;
 	
-	// Analog distance sensor
-	DistanceSensor* m_pDistanceSensor;
+	// Analog distance sensors
+	DistanceSensor* m_pLeftDistanceSensor;
+	DistanceSensor* m_pRightDistanceSensor;
 	
 	// Declare variables for the controllers
 	TeleopController *m_pTeleopController;

@@ -3,8 +3,9 @@
 
 // local includes
 #include "autonomous_controller.h"
-#include "I2C_Ultrasound.h"
+#include "constants.h"
 #include "DistanceSensor.h"
+#include "I2C_Ultrasound.h"
 #include "teleop_controller.h"
 
 // FRC includes
@@ -13,7 +14,7 @@
 // standard includes
 #include <numeric>
 
-const int KBot::kPeriodicSpeed = 200; // Speed of periodic loops in Hz
+const int KBot::kPeriodicSpeed = 50; // Speed of periodic loops in Hz
 
 /*!
 The constructor builds everything
@@ -25,37 +26,32 @@ KBot::KBot(void)
 	std::cerr << "Periodic rate ="<< IterativeRobot::GetLoopsPerSec() << " loops per second." << std::endl;
 	
 	// Create a robot using standard right/left robot drive on PWMS 1, 2, 3, and #4
-	m_pLeftJaguarFront = new CANJaguar(3, CANJaguar::kSpeed);
-	m_pLeftJaguarFront->Set(0.0);
-	m_pLeftJaguarBack = new CANJaguar(2, CANJaguar::kSpeed);
-	m_pLeftJaguarBack->Set(0.0);
+	m_pLeftFrontJaguar = new CANJaguar(knLeftFrontJaguar, CANJaguar::kSpeed);
+	m_pLeftFrontJaguar->Set(0.0);
+	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, CANJaguar::kSpeed);
+	m_pLeftBackJaguar->Set(0.0);
 
-	m_pRightJaguarFront = new CANJaguar(6, CANJaguar::kSpeed);
-	m_pRightJaguarFront->Set(0.0);
-	m_pRightJaguarBack = new CANJaguar(5, CANJaguar::kSpeed);
-	m_pRightJaguarBack->Set(0.0);
+	m_pRightFrontJaguar = new CANJaguar(knRightFrontJaguar, CANJaguar::kSpeed);
+	m_pRightFrontJaguar->Set(0.0);
+	m_pRightBackJaguar = new CANJaguar(knRightBackJaguar, CANJaguar::kSpeed);
+	m_pRightBackJaguar->Set(0.0);
 	
 	// controllers
 	m_pTeleopController = new TeleopController("test.dat");
 	m_pAutonomousController = new AutonomousController(this, "test.dat");
 	
 	// gyro
-	m_pGyro = new Gyro(1);
+	m_pGyro = new Gyro(knGyro);
 	m_fGyroSetPoint = 0.0f;
 
 	// ultrasounds
-	m_pUltrasound = new I2C_Ultrasound(0xE2);
+	m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
+//	m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
 	
 	// analog distance sensors
-	m_pDistanceSensor = new DistanceSensor(2);
+	m_pLeftDistanceSensor = new DistanceSensor(knLeftDistanceSensor);
+//	m_pRightDistanceSensor = new DistanceSensor(knRightIRSensor);
 
-	int nNumberOfInputs = 2;	// make room for x/y/r and weights
-	m_vecX.resize(nNumberOfInputs);
-	m_vecY.resize(nNumberOfInputs);
-	m_vecR.resize(nNumberOfInputs);
-	m_vecWeightX.resize(nNumberOfInputs);
-	m_vecWeightY.resize(nNumberOfInputs);
-	m_vecWeightR.resize(nNumberOfInputs);
 }
 
 /*!
@@ -88,50 +84,43 @@ void KBot::RobotInit()
 {
 	GetWatchdog().SetEnabled(true);
 	
-	m_nAnalogSensorNumber = 1;
-	m_vecAnalogSensors.resize(m_nAnalogSensorNumber);
+	m_pLeftFrontJaguar->SetSafetyEnabled(true);
+	m_pLeftBackJaguar->SetSafetyEnabled(true);
+	m_pRightFrontJaguar->SetSafetyEnabled(true);
+	m_pRightBackJaguar->SetSafetyEnabled(true);
 	
-	m_pLeftJaguarFront->SetSafetyEnabled(true);
-	m_pLeftJaguarBack->SetSafetyEnabled(true);
-	m_pRightJaguarFront->SetSafetyEnabled(true);
-	m_pRightJaguarBack->SetSafetyEnabled(true);
+	m_pLeftFrontJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pLeftBackJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
 	
-	m_pLeftJaguarFront->SetPID(1.0, 0.0, 0.0);
-	m_pLeftJaguarBack->SetPID(1.0, 0.0, 0.0);
-	m_pRightJaguarFront->SetPID(1.0, 0.0, 0.0);
-	m_pRightJaguarBack->SetPID(1.0, 0.0, 0.0);
+	m_pLeftFrontJaguar->ConfigEncoderCodesPerRev(360);
+	m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
+	m_pRightFrontJaguar->ConfigEncoderCodesPerRev(360);
+	m_pRightBackJaguar->ConfigEncoderCodesPerRev(360);
 	
-	m_pLeftJaguarFront->ConfigEncoderCodesPerRev(360);
-	m_pLeftJaguarBack->ConfigEncoderCodesPerRev(360);
-	m_pRightJaguarFront->ConfigEncoderCodesPerRev(360);
-	m_pRightJaguarBack->ConfigEncoderCodesPerRev(360);
-	
-	//m_pLeftJaguarFront->ConfigMaxOutputVoltage(6.0);
-	//m_pLeftJaguarBack->ConfigMaxOutputVoltage(6.0);
-	//m_pRightJaguarFront->ConfigMaxOutputVoltage(6.0);
-	//m_pRightJaguarBack->ConfigMaxOutputVoltage(6.0);
-	
-	m_pLeftJaguarFront->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pLeftJaguarBack->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pRightJaguarFront->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pRightJaguarBack->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pLeftFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pLeftBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pRightFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pRightBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 			
-	m_pLeftJaguarFront->EnableControl();
-	m_pLeftJaguarBack->EnableControl();
-	m_pRightJaguarFront->EnableControl();
-	m_pRightJaguarBack->EnableControl();
+	m_pLeftFrontJaguar->EnableControl();
+	m_pLeftBackJaguar->EnableControl();
+	m_pRightFrontJaguar->EnableControl();
+	m_pRightBackJaguar->EnableControl();
 	
-	m_vecAnalogSensors[GYRO] = m_pGyro->GetAngle();
+	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
 	
-	m_pUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
-	m_pUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
+	m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
+	m_pLeftUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
 	
 	// Reprogram Ultrasound's I2C address:
 	//   Create the Ultrasound with an address of E0 (for an unprogrammed Ultrasound)
 	//   then call this method to reprogram it.
 	//m_pUltrasound->SetI2CAddress(0xe2);
 	
-	m_pDistanceSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
+	m_pLeftDistanceSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
+//	m_pRightDistanceSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 }
 
 /*!
@@ -170,14 +159,14 @@ void KBot::DisabledPeriodic(void)
 
 	if (1 == nCount)
 	{
-		m_pUltrasound->Ping();
-		std::cerr <<m_pDistanceSensor->GetVoltage() << "   " << m_pDistanceSensor->GetDistance() << "   ";
+		m_pLeftUltrasound->Ping();
+		std::cerr <<m_pLeftDistanceSensor->GetVoltage() << "   " << m_pLeftDistanceSensor->GetDistance() << "   ";
 	}
 	else if (14 == nCount)
 	{
-		std::cerr << m_pUltrasound->GetDistance() << std::endl;
+		std::cerr << m_pLeftUltrasound->GetDistance() << std::endl;
 	}
-	else if (100 == nCount)
+	else if (30 == nCount)
 	{
 		nCount = 0;
 	}
@@ -199,16 +188,10 @@ void KBot::AutonomousPeriodic(void)
  */
 void KBot::TeleopPeriodic(void) 
 {
-	static int nCount=0;
-	
 	//std::cerr << "operator control" << std::endl;
 	GetWatchdog().Feed();
 	
-	if (++nCount == 4)
-	{
-		RunRobot(m_pTeleopController);
-		nCount=0;
-	}
+	RunRobot(m_pTeleopController);
 }
 
 void KBot::RunRobot(Controller* pController)
@@ -216,38 +199,72 @@ void KBot::RunRobot(Controller* pController)
 	ReadSensors();			// read all the sensors into robot buffers
 	pController->Update();	// update the controller buffers from hardware
 	ComputeActuators(pController);		// compute contributions to actuator actions
+	ComputeWeights(pController);	// compute the weights for each input
 	UpdateActuators();		// set the motor and actuator states	
+}
+
+void KBot::ReadUltrasoundSensors()
+{
+	static int nUltrasoundCount = 0;
+	
+	if (1 == nUltrasoundCount)
+	{
+		m_pLeftUltrasound->Ping();
+	}
+	else if (5 == nUltrasoundCount)
+	{
+		float fDistance = m_pLeftUltrasound->GetDistance();
+		if (10.0 > fDistance)
+		{
+			m_mapAnalogSensors[knLeftUltrasound] = fDistance;
+		}
+//		m_pRightUltrasound->Ping();
+	}
+	else if (10 == nUltrasoundCount)
+	{
+		nUltrasoundCount = 0;
+//		float fDistance = m_pRightUltrasound->GetDistance();
+//		if (10.0 > fDistance)
+//		{
+//			m_mapAnalogSensors[knRightUltrasound] = fDistance;
+//		}
+	}
+	++nUltrasoundCount;
+	
 }
 
 void KBot::ReadSensors()
 {
-	m_vecAnalogSensors[GYRO] = m_pGyro->GetAngle();
+	//*********ANALOG SENSORS************
+	
+	// read current gyro angle
+	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
+	
+	m_mapAnalogSensors[knLeftDistanceSensor] = m_pLeftDistanceSensor->GetDistance();
+//	m_mapAnalogSensors[knRightDistanceSensor] = m_pRightDistanceSensor->GetDistance();
+	
+	ReadUltrasoundSensors();	// put ping logic in its own method
+	
+//	m_mapAnalogSensors[knArmPosition] = m_pArm->GetValue();
+
+	//*********DIGITAL SENSORS************
+	
+	// Wrist limit switches
+	//m_mapDigitalSensors[knWristInSwitch] = m_pWristIn->GetValue();
+	//m_mapDigitalSensors[knWristOutSwitch] = m_pWristOut->GetValue();
+	
 }
 
 void KBot::ComputeControllerXYR(Controller* pController)
 {
-	m_vecX[0] = -pController->GetAxis(0);
-	m_vecY[0]  = -pController->GetAxis(1);
-	m_vecR[0] = pController->GetAxis(2);	
-	m_vecWeightX[0] = 1.0f;
-	m_vecWeightY[0] = 1.0f;
-	m_vecWeightR[0] = 1.0f;
+	m_mapX[knDriverInput] = -pController->GetAxis(0);
+	m_mapY[knDriverInput]  = -pController->GetAxis(1);
+	m_mapR[knDriverInput] = pController->GetAxis(2);	
 }
 
 void KBot::ComputeGyroXYR()
 {
-	float fRotationFactor = 0.02f;
-	m_vecR[1] = fRotationFactor*(m_vecAnalogSensors[GYRO]-m_fGyroSetPoint);	
-	if (fabs(m_vecR[0]) > 0.1f)	// let stick have control
-	{
-		m_fGyroSetPoint = m_vecAnalogSensors[GYRO];
-		m_vecWeightR[1] = 0.0f;
-	}
-	else						// let gyro have control
-	{
-		m_vecWeightR[1] = 1.0f;
-		m_vecWeightR[0] = 0.0f;		
-	}
+	m_mapR[knGyroTracking] = kfRotationFactor*(m_mapAnalogSensors[knGyro]-m_fGyroSetPoint);	
 }
 
 void KBot::ComputeActuators(Controller* pController)
@@ -256,16 +273,41 @@ void KBot::ComputeActuators(Controller* pController)
 	ComputeGyroXYR();
 }
 
-void KBot::UpdateActuators()
+void KBot::ComputeWeights(Controller* pController)
 {
-	float fX = 0.0f;
-	float fY = 0.0f;
-	float fR = 0.0f;
-	for(unsigned int nIndex = 0; nIndex < m_vecWeightX.size(); ++nIndex)
+	m_mapWeightX[knDriverInput] = 1.0f;	// assume driver full control
+	m_mapWeightY[knDriverInput] = 1.0f;
+	m_mapWeightR[knDriverInput] = 1.0f;
+	
+	m_mapWeightX[knGyroTracking] = 0.0f; // assume no input from gyro
+	m_mapWeightY[knGyroTracking] = 0.0f;
+	m_mapWeightR[knGyroTracking] = 0.0f;
+	
+	if (fabs(m_mapR[knGyroTracking]) > 0.1f)	// let stick have control
 	{
-		fX += m_vecWeightX[nIndex]*m_vecX[nIndex];
-		fY += m_vecWeightY[nIndex]*m_vecY[nIndex];
-		fR += m_vecWeightR[nIndex]*m_vecR[nIndex];
+		m_fGyroSetPoint = m_mapAnalogSensors[knGyro];
+		m_mapWeightR[knGyroTracking] = 0.0f;
+	}
+	else						// let gyro have control
+	{
+		m_mapWeightR[knGyroTracking] = 1.0f;
+		m_mapWeightR[knDriverInput] = 0.0f;
+	}	
+}
+
+void KBot::UpdateWheelSpeeds()
+{
+	float fX = 0.0f;	// we will eventually add arm 
+	float fY = 0.0f;	// and other values here
+	float fR = 0.0f;
+	// rather awkwardly iterate over all weights and inputs for motors
+	std::map<CalculationMapping, float>::iterator itWeights = m_mapWeightX.begin();
+	for(; itWeights != m_mapWeightX.end(); ++itWeights)
+	{
+		CalculationMapping nIndex = itWeights->first;
+		fX += m_mapWeightX[nIndex]*m_mapX[nIndex];
+		fY += m_mapWeightY[nIndex]*m_mapY[nIndex];
+		fR += m_mapWeightR[nIndex]*m_mapR[nIndex];
 	}
 	
 	double wheelSpeeds[4];
@@ -274,6 +316,40 @@ void KBot::UpdateActuators()
 	wheelSpeeds[2] = -fX + fY + fR;
 	wheelSpeeds[3] = fX + fY - fR;
 	
+	DeadbandNormalize(wheelSpeeds);
+
+	// actually set speeds
+	UINT8 syncGroup = 0x80;	
+	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*100.0 , syncGroup);
+	m_pRightFrontJaguar->Set(wheelSpeeds[1]*100.0 , syncGroup);
+	m_pRightBackJaguar->Set(wheelSpeeds[2]*100.0, syncGroup);
+	m_pLeftBackJaguar->Set(wheelSpeeds[3]*100.0 , syncGroup);
+	CANJaguar::UpdateSyncGroup(syncGroup);
+}
+
+void KBot::UpdateArmPosition()
+{
+	
+}
+
+void KBot::UpdateRollerClaw()
+{
+	
+}
+
+void KBot::UpdateActuators()
+{
+	UpdateWheelSpeeds();
+	UpdateArmPosition();
+	UpdateRollerClaw();
+}
+
+/**
+If a wheel speed is less than some limit zero it, and 
+then normalize all speeds to the max so the max speed is 1.0
+ */
+void KBot::DeadbandNormalize(double *wheelSpeeds)
+{
 	// Deadband on wheels:
 	for (int i=0; i<4; i++)
 	{
@@ -282,22 +358,7 @@ void KBot::UpdateActuators()
 			wheelSpeeds[i] = 0.0;
 		}
 	}
-	Normalize(wheelSpeeds);
-
-	// actually set speeds
-	UINT8 syncGroup = 0x80;	
-	m_pLeftJaguarFront->Set(wheelSpeeds[0]*100.0 , syncGroup);
-	m_pRightJaguarFront->Set(wheelSpeeds[1]*100.0 , syncGroup);
-	m_pRightJaguarBack->Set(wheelSpeeds[2]*100.0, syncGroup);
-	m_pLeftJaguarBack->Set(wheelSpeeds[3]*100.0 , syncGroup);
-	CANJaguar::UpdateSyncGroup(syncGroup);
-}
-
-/**
- * Normalize all wheel speeds if the magnitude of any wheel is greater than 1.0.
- */
-void KBot::Normalize(double *wheelSpeeds)
-{
+	
 	double maxMagnitude = fabs(wheelSpeeds[0]);
 	INT32 i;
 	for (i=1; i<4; i++)
