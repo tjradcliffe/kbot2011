@@ -322,7 +322,7 @@ void KBot::ComputeWeights(Controller* pController)
 	m_mapWeightY[knGyroTracking] = 0.0f;
 	m_mapWeightR[knGyroTracking] = 0.0f;
 	
-	if (fabs(m_mapR[knGyroTracking]) > 0.1f)	// let stick have control
+	if (fabs(m_mapR[knDriverInput]) > 0.1f)	// let stick have control
 	{
 		m_fGyroSetPoint = m_mapAnalogSensors[knGyro];
 		m_mapWeightR[knGyroTracking] = 0.0f;
