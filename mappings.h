@@ -11,6 +11,11 @@ const int knX = 0;
 const int knY = 1;
 const int knR = 2;
 
+// The cRIO slots for various interfaces
+const int knAnalogSlot = 1;
+const int knDigitalSlot = 4;
+const int knRelaySlot = 8;
+
 //! The JAG ids for the various motors
 enum MotorMappings
 {
@@ -20,7 +25,7 @@ enum MotorMappings
 	knLeftFrontJaguar = 3,
 	knArmJaguar = 1,
 	knLowerRollerJaguar = 4,
-	knRightRollerJaguar = 7,
+	knUpperRollerJaguar = 7,
 };
 
 //! The solenoid ids
@@ -30,34 +35,36 @@ enum SolenoidMappings
 	knWristInSolenoid = 2,
 	knJawOpenSolenoid = 3,
 	knJawClosedSolenoid = 4,
-	knDeployerSolenoid = 5,
+	knDeployerOutSolenoid = 5,
+	knDeployerInSolenoid = 6,
 };
 
 //! The analog sensor mappings
 enum AnalogMapping
 {
 	knGyro = 1,
-	knLeftDistanceSensor = 2,
+	knLeftIRSensor = 2,
 	knLeftUltrasound = 0xE2,
-	knRightDistanceSensor = 3,
-	knRightUltrasound = 0xE3,
+	knRightIRSensor = 3,
+	knRightUltrasound = 0xE0,
 	knAccelerationX = 4,
 	knAccelerationY = 5,
 	knAccelerationZ = 6,
 	knArmAngle = 7,
+	knArmDistance = 8,
 };
 
 //! The digital sensor mappings
 enum DigitalMapping
 {
-	knWristIn = 1,
-	knWristOut = 2,
+	knWristInLimit = 1,
+	knWristOutLimit = 2,
 	knLineRight = 3,
 	knLineLeft = 4,
 	knLineBack = 5,
 	knRetroReflector = 6,
-	knArmUp = 7,
-	knArmDown = 8,
+	knArmUpLimit = 7,
+	knArmDownLimit = 8,
 };
 
 //! The calculation mappings
@@ -65,7 +72,7 @@ enum CalculationMapping
 {
 	knDriverInput,
 	knGyroTracking,
-	knWallFollowers,
+	knWallFollower,
 };
 
 #endif // MAPPINGS_H

@@ -82,7 +82,7 @@ protected:
 	void ReadSensors();
 
 	//! Read the ultrasounds (takes some extra logic for cross-talk etc)
-	void KBot::ReadUltrasoundSensors();
+	void ReadUltrasoundSensors();
 	
 	//! Compute actuator inputs
 	void ComputeActuators(Controller* pController);
@@ -108,35 +108,57 @@ protected:
 	//! Update the roller claw motor speeds
 	void UpdateRollerClaw();
 	
+	//! Update the driver station (extended IO)
+	void UpdateDriverStation();
+	
 private:
 	static const int kPeriodicSpeed;
 	
-	//! Digital sensors
-	std::map<DigitalMapping, float> m_mapDigitalSensors;
+	//! Digital sensor values
+	std::map<DigitalMapping, int> m_mapDigitalSensors;
 	
-	//! Analog sensors
+	//! Analog sensor values
 	std::map<AnalogMapping, float> m_mapAnalogSensors;
 	
-	//! X-direction update values from various sources
+	//! Body update values from various sources
+	//@{
 	std::map<CalculationMapping, float> m_mapX;
-	
-	//! Y-direction update values from various sources
 	std::map<CalculationMapping, float> m_mapY;
-	
-	//! rotation update values from various sources
 	std::map<CalculationMapping, float> m_mapR;
+	//@}
+	
+	//! Arm state values
+	//@{
+	float m_fArmAngle;
+	int m_nWrist;	// -1 is in (folded), +1 is out (extended)
+	//@}
 	
 	//! Weight vector (appliesto x/y/r from each source)
 	std::map<CalculationMapping, float> m_mapWeightX;
 	std::map<CalculationMapping, float> m_mapWeightY;
 	std::map<CalculationMapping, float> m_mapWeightR;
 	
-	//! Motor controllers
+	///*************ACTUATORS******************
+	//! Motor controllers for body
 	CANJaguar *m_pLeftFrontJaguar;
 	CANJaguar *m_pLeftBackJaguar;
 	CANJaguar *m_pRightFrontJaguar;
 	CANJaguar *m_pRightBackJaguar;
+	
+	//! Motor controller for arm and roller claws
+	CANJaguar *m_pArmJaguar;
+	CANJaguar *m_pLowerRollerJaguar;
+	CANJaguar *m_pUpperRollerJaguar;
 
+	//! Solenoids to control wrist, jaw and swing-arm
+	Solenoid *m_pWristOutSolenoid;
+	Solenoid *m_pWristInSolenoid;
+	Solenoid *m_pJawOpenSolenoid;
+	Solenoid *m_pJawClosedSolenoid;
+	Solenoid *m_pDeployerOutSolenoid;
+	Solenoid *m_pDeployerInSolenoid;
+	
+	///*************SENSORS******************
 	// The gyro is used for maintaining orientation
 	Gyro *m_pGyro;
 	float m_fGyroSetPoint;
@@ -146,13 +168,23 @@ private:
 	I2C_Ultrasound* m_pRightUltrasound;
 	
 	// Analog distance sensors
-	DistanceSensor* m_pLeftDistanceSensor;
-	DistanceSensor* m_pRightDistanceSensor;
+	DistanceSensor* m_pLeftIRSensor;
+	DistanceSensor* m_pRightIRSensor;
 	
 	// Declare variables for the controllers
 	TeleopController *m_pTeleopController;
 	AutonomousController *m_pAutonomousController;
 
+	// digital inputs
+	DigitalInput* m_pWristInLimit;
+	DigitalInput* m_pWristOutLimit;
+	DigitalInput* m_pLineRight;
+	DigitalInput* m_pLineLeft;
+	DigitalInput* m_pLineBack;
+	DigitalInput* m_pRetroReflector;
+	DigitalInput* m_pArmUpLimit;
+	DigitalInput* m_pArmDownLimit;
+	
 }; // class declaration
 
 #endif // KBOT_H

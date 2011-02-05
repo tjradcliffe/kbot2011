@@ -36,6 +36,22 @@ KBot::KBot(void)
 	m_pRightBackJaguar = new CANJaguar(knRightBackJaguar, CANJaguar::kSpeed);
 	m_pRightBackJaguar->Set(0.0);
 	
+	// Arm actuators
+	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
+	m_pArmJaguar->Set(0.0);
+	m_pLowerRollerJaguar = new CANJaguar(knLowerRollerJaguar, CANJaguar::kVoltage);
+	m_pLowerRollerJaguar->Set(0.0);
+	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
+	m_pUpperRollerJaguar->Set(0.0);
+
+	//! Solenoids to control wrist, jaw and swing-arm
+	m_pWristOutSolenoid = new Solenoid(knRelaySlot, knWristOutSolenoid);
+	m_pWristInSolenoid = new Solenoid(knRelaySlot, knWristInSolenoid);
+	m_pJawOpenSolenoid = new Solenoid(knRelaySlot, knJawOpenSolenoid);
+	m_pJawClosedSolenoid = new Solenoid(knRelaySlot, knJawClosedSolenoid);
+	m_pDeployerOutSolenoid = new Solenoid(knRelaySlot, knDeployerOutSolenoid);
+	m_pDeployerInSolenoid = new Solenoid(knRelaySlot, knDeployerInSolenoid);
+	
 	// controllers
 	m_pTeleopController = new TeleopController("test.dat");
 	m_pAutonomousController = new AutonomousController(this, "test.dat");
@@ -46,12 +62,21 @@ KBot::KBot(void)
 
 	// ultrasounds
 	m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
-//	m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
+	m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
 	
 	// analog distance sensors
-	m_pLeftDistanceSensor = new DistanceSensor(knLeftDistanceSensor);
-//	m_pRightDistanceSensor = new DistanceSensor(knRightIRSensor);
-
+	m_pLeftIRSensor = new DistanceSensor(knLeftIRSensor);
+	m_pRightIRSensor = new DistanceSensor(knRightIRSensor);
+	
+	// digital sensors
+	m_pWristInLimit = new DigitalInput(knDigitalSlot, knWristInLimit);
+	m_pWristOutLimit = new DigitalInput(knDigitalSlot, knWristOutLimit);
+	m_pLineRight = new DigitalInput(knDigitalSlot, knLineRight);
+	m_pLineLeft = new DigitalInput(knDigitalSlot, knLineLeft);
+	m_pLineBack = new DigitalInput(knDigitalSlot, knLineBack);
+	m_pRetroReflector = new DigitalInput(knDigitalSlot, knRetroReflector);
+	m_pArmUpLimit = new DigitalInput(knDigitalSlot, knArmUpLimit);
+	m_pArmDownLimit = new DigitalInput(knDigitalSlot, knArmDownLimit);
 }
 
 /*!
@@ -113,14 +138,16 @@ void KBot::RobotInit()
 	
 	m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
 	m_pLeftUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
+	m_pRightUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
+	m_pRightUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
 	
 	// Reprogram Ultrasound's I2C address:
 	//   Create the Ultrasound with an address of E0 (for an unprogrammed Ultrasound)
 	//   then call this method to reprogram it.
 	//m_pUltrasound->SetI2CAddress(0xe2);
 	
-	m_pLeftDistanceSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
-//	m_pRightDistanceSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
+	m_pLeftIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
+	m_pRightIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 }
 
 /*!
@@ -160,7 +187,7 @@ void KBot::DisabledPeriodic(void)
 	if (1 == nCount)
 	{
 		m_pLeftUltrasound->Ping();
-		std::cerr <<m_pLeftDistanceSensor->GetVoltage() << "   " << m_pLeftDistanceSensor->GetDistance() << "   ";
+		std::cerr <<m_pLeftIRSensor->GetVoltage() << "   " << m_pLeftIRSensor->GetDistance() << "   ";
 	}
 	else if (14 == nCount)
 	{
@@ -194,13 +221,32 @@ void KBot::TeleopPeriodic(void)
 	RunRobot(m_pTeleopController);
 }
 
+/*!
+Update extended IO module of driver-station.  Currently does nothing.
+*/
+void KBot::UpdateDriverStation()
+{
+	try
+	{
+		DriverStationEnhancedIO& dseio = DriverStation::GetInstance()->GetEnhancedIO();
+		dseio.GetDigitalConfig(1);
+	
+		dseio.SetLEDs(255);  // led bitmask
+	}
+	catch(...)
+	{
+		// do nothing... just in case we throw when not connected etc
+	}
+}
+
 void KBot::RunRobot(Controller* pController)
 {
 	ReadSensors();			// read all the sensors into robot buffers
 	pController->Update();	// update the controller buffers from hardware
 	ComputeActuators(pController);		// compute contributions to actuator actions
 	ComputeWeights(pController);	// compute the weights for each input
-	UpdateActuators();		// set the motor and actuator states	
+	UpdateActuators();		// set the motor and actuator states
+	UpdateDriverStation();	// update the driver station 
 }
 
 /*!
@@ -228,11 +274,11 @@ void KBot::ReadUltrasoundSensors()
 	else if (10 == nUltrasoundCount)
 	{
 		nUltrasoundCount = 0;
-//		float fDistance = m_pRightUltrasound->GetDistance();
-//		if (10.0 > fDistance)
-//		{
-//			m_mapAnalogSensors[knRightUltrasound] = fDistance;
-//		}
+		float fDistance = m_pRightUltrasound->GetDistance();
+		if (10.0 > fDistance)
+		{
+			m_mapAnalogSensors[knRightUltrasound] = fDistance;
+		}
 	}
 	++nUltrasoundCount;
 	
@@ -250,8 +296,8 @@ void KBot::ReadSensors()
 	// read current gyro angle
 	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
 	
-	m_mapAnalogSensors[knLeftDistanceSensor] = m_pLeftDistanceSensor->GetDistance();
-//	m_mapAnalogSensors[knRightDistanceSensor] = m_pRightDistanceSensor->GetDistance();
+	m_mapAnalogSensors[knLeftIRSensor] = m_pLeftIRSensor->GetDistance();
+	m_mapAnalogSensors[knRightIRSensor] = m_pRightIRSensor->GetDistance();
 	
 	ReadUltrasoundSensors();	// put ping logic in its own method
 	
