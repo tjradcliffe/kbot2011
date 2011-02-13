@@ -43,14 +43,21 @@ KBot::KBot(void)
 	m_pLowerRollerJaguar->Set(0.0);
 	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
 	m_pUpperRollerJaguar->Set(0.0);
+	
+	// Arm angle potentiometer
+	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
 
-	//! Solenoids to control wrist, jaw and swing-arm
+	// Solenoids to control wrist, jaw and swing-arm
 	m_pWristOutSolenoid = new Solenoid(knRelaySlot, knWristOutSolenoid);
 	m_pWristInSolenoid = new Solenoid(knRelaySlot, knWristInSolenoid);
 	m_pJawOpenSolenoid = new Solenoid(knRelaySlot, knJawOpenSolenoid);
 	m_pJawClosedSolenoid = new Solenoid(knRelaySlot, knJawClosedSolenoid);
 	m_pDeployerOutSolenoid = new Solenoid(knRelaySlot, knDeployerOutSolenoid);
 	m_pDeployerInSolenoid = new Solenoid(knRelaySlot, knDeployerInSolenoid);
+	
+	// Compressor controls
+	m_pCompressorRelay = new Relay(knCompressorRelay,Relay::kForwardOnly);
+	m_pCompressorLimit = new DigitalInput(knCompressorLimit);
 	
 	// controllers
 	m_pTeleopController = new TeleopController("test.dat");
@@ -60,6 +67,9 @@ KBot::KBot(void)
 	m_pGyro = new Gyro(knGyro);
 	m_fGyroSetPoint = 0.0f;
 
+	// accelerometer
+	m_pAccelerometer = new ADXL345_I2C(knDigitalSlot, ADXL345_I2C::kRange_2G);
+	
 	// ultrasounds
 	m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
 	m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
@@ -68,15 +78,36 @@ KBot::KBot(void)
 	m_pLeftIRSensor = new DistanceSensor(knLeftIRSensor);
 	m_pRightIRSensor = new DistanceSensor(knRightIRSensor);
 	
-	// digital sensors
-	m_pWristInLimit = new DigitalInput(knDigitalSlot, knWristInLimit);
-	m_pWristOutLimit = new DigitalInput(knDigitalSlot, knWristOutLimit);
+	// line sensors
 	m_pLineRight = new DigitalInput(knDigitalSlot, knLineRight);
 	m_pLineLeft = new DigitalInput(knDigitalSlot, knLineLeft);
 	m_pLineBack = new DigitalInput(knDigitalSlot, knLineBack);
+	
+	// tube sensors
+	m_pTubeLeft = new DigitalInput(knDigitalSlot, knTubeLeft);
+	m_pTubeRight = new DigitalInput(knDigitalSlot, knTubeRight);
+	m_pTubeIR = new AnalogChannel(knAnalogSlot, knTubeIR);
+	
+	// retro-reflector (if we use it)
 	m_pRetroReflector = new DigitalInput(knDigitalSlot, knRetroReflector);
-	m_pArmUpLimit = new DigitalInput(knDigitalSlot, knArmUpLimit);
-	m_pArmDownLimit = new DigitalInput(knDigitalSlot, knArmDownLimit);
+	
+	// record switch for teleop
+	m_pRecordSwitch = new DigitalInput(knDigitalSlot, knRecordSwitch);
+}
+
+void KBot::ControlCompressor(void)
+{
+	// control the compressor based on pressure switch reading
+	if (0 == m_mapDigitalSensors[knCompressorLimit])
+	{
+		m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
+		m_pCompressorRelay->Set(Relay::kForward);
+	}
+	else
+	{
+		m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
+		m_pCompressorRelay->Set(Relay::kOff);				
+	}
 }
 
 /*!
@@ -89,6 +120,8 @@ void KBot::ResetRobot(bool bRecordTeleop)
 
 	m_pGyro->Reset();	// reset gyro and setpoint
 	m_fGyroSetPoint = m_pGyro->GetAngle();
+	
+	m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
 	
 	if (bRecordTeleop)
 	{
@@ -113,26 +146,41 @@ void KBot::RobotInit()
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
 	m_pRightFrontJaguar->SetSafetyEnabled(true);
 	m_pRightBackJaguar->SetSafetyEnabled(true);
+	m_pArmJaguar->SetSafetyEnabled(true);
+	m_pLowerRollerJaguar->SetSafetyEnabled(true);
+	m_pUpperRollerJaguar->SetSafetyEnabled(true);
 	
 	m_pLeftFrontJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pLeftBackJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pArmJaguar->SetPID(0.0, 0.0, 500.0);  // as suggested in forums
+	m_pLowerRollerJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pUpperRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	
 	m_pLeftFrontJaguar->ConfigEncoderCodesPerRev(360);
 	m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
 	m_pRightFrontJaguar->ConfigEncoderCodesPerRev(360);
 	m_pRightBackJaguar->ConfigEncoderCodesPerRev(360);
+	m_pArmJaguar->SetPositionReference(CANJaguar::kPosRef_Potentiometer);
 	
 	m_pLeftFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pLeftBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pRightFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pRightBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pArmJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pLowerRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pUpperRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 			
 	m_pLeftFrontJaguar->EnableControl();
 	m_pLeftBackJaguar->EnableControl();
 	m_pRightFrontJaguar->EnableControl();
 	m_pRightBackJaguar->EnableControl();
+	m_pArmJaguar->EnableControl();
+	m_pLowerRollerJaguar->EnableControl();
+	m_pUpperRollerJaguar->EnableControl();
+	
+	m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
 	
 	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
 	
@@ -148,6 +196,14 @@ void KBot::RobotInit()
 	
 	m_pLeftIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 	m_pRightIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
+	
+	m_fTargetArmAngle = 0.0f;  // folded
+	m_nWristPosition = 0;  // in
+	m_nJawPosition = 0;  // open
+	m_nDeployerPosition = 0; // in
+	
+	m_fLowerJawRollerSpeed = 0.0f;
+	m_fUpperJawRollerSpeed = 0.0f;
 }
 
 /*!
@@ -184,18 +240,29 @@ void KBot::DisabledPeriodic(void)
 	// feed the user watchdog at every period when disabled
 	GetWatchdog().Feed();
 
-	if (1 == nCount)
-	{
-		m_pLeftUltrasound->Ping();
-		std::cerr <<m_pLeftIRSensor->GetVoltage() << "   " << m_pLeftIRSensor->GetDistance() << "   ";
-	}
-	else if (14 == nCount)
-	{
-		std::cerr << m_pLeftUltrasound->GetDistance() << std::endl;
-	}
-	else if (30 == nCount)
+	ReadSensors();	// fill sensor arrays
+
+	if (nCount == 25)  // once every half second
 	{
 		nCount = 0;
+		
+		// display analog inputs
+		std::map<AnalogMapping, float>::iterator itAnalog = m_mapAnalogSensors.begin();
+		std::cerr.precision(3);
+		for(; itAnalog != m_mapAnalogSensors.end(); ++itAnalog)
+		{
+			std::cerr << itAnalog->first << ": " << itAnalog->second << " | ";
+		}
+		std::cerr << std::endl;
+		
+		// display digital inputs
+		std::map<DigitalMapping, int>::iterator itDigital = m_mapDigitalSensors.begin();
+		for(; itDigital != m_mapDigitalSensors.end(); ++itDigital)
+		{
+			std::cerr << itDigital->first << ": " << itDigital->second << " | ";
+		}
+		std::cerr << std::endl;
+		std::cerr << "===========" << std::endl;
 	}
 	++nCount;
 }
@@ -230,7 +297,7 @@ void KBot::UpdateDriverStation()
 	{
 		DriverStationEnhancedIO& dseio = DriverStation::GetInstance()->GetEnhancedIO();
 		dseio.GetDigitalConfig(1);
-	
+		
 		dseio.SetLEDs(255);  // led bitmask
 	}
 	catch(...)
@@ -246,6 +313,7 @@ void KBot::RunRobot(Controller* pController)
 	ComputeActuators(pController);		// compute contributions to actuator actions
 	ComputeWeights(pController);	// compute the weights for each input
 	UpdateActuators();		// set the motor and actuator states
+	ControlCompressor();	// manage the compressor state based on switch state
 	UpdateDriverStation();	// update the driver station 
 }
 
@@ -269,7 +337,7 @@ void KBot::ReadUltrasoundSensors()
 		{
 			m_mapAnalogSensors[knLeftUltrasound] = fDistance;
 		}
-//		m_pRightUltrasound->Ping();
+		m_pRightUltrasound->Ping();
 	}
 	else if (10 == nUltrasoundCount)
 	{
@@ -301,13 +369,24 @@ void KBot::ReadSensors()
 	
 	ReadUltrasoundSensors();	// put ping logic in its own method
 	
-//	m_mapAnalogSensors[knArmPosition] = m_pArm->GetValue();
+	m_mapAnalogSensors[knArmAngle] = m_pArmAngle->GetValue();
+	m_mapAnalogSensors[knTubeIR] = m_pTubeIR->GetValue();
+	
+	ADXL345_I2C::AllAxes accelerations = m_pAccelerometer->GetAccelerations();
+	m_mapAnalogSensors[knAccelerationX] = accelerations.XAxis;
+	m_mapAnalogSensors[knAccelerationY] = accelerations.YAxis;
+	m_mapAnalogSensors[knAccelerationZ] = accelerations.ZAxis;
 
 	//*********DIGITAL SENSORS************
 	
-	// Wrist limit switches
-	//m_mapDigitalSensors[knWristInSwitch] = m_pWristIn->GetValue();
-	//m_mapDigitalSensors[knWristOutSwitch] = m_pWristOut->GetValue();
+	m_mapDigitalSensors[knLineRight] = m_pLineRight->Get();
+	m_mapDigitalSensors[knLineLeft] = m_pLineLeft->Get();
+	m_mapDigitalSensors[knLineBack] = m_pLineBack->Get();
+	m_mapDigitalSensors[knRetroReflector] = m_pRetroReflector->Get();
+	m_mapDigitalSensors[knTubeLeft] = m_pTubeLeft->Get();
+	m_mapDigitalSensors[knTubeRight] = m_pTubeRight->Get();
+	m_mapDigitalSensors[knCompressorLimit] = m_pCompressorLimit->Get();
+	m_mapDigitalSensors[knRecordSwitch] = m_pRecordSwitch->Get();
 	
 }
 
@@ -322,11 +401,11 @@ void KBot::ComputeControllerXYR(Controller* pController)
 	m_mapX[knDriverInput] = -pController->GetAxis(knX);
 	m_mapY[knDriverInput]  = -pController->GetAxis(knY);
 	m_mapR[knDriverInput] = pController->GetAxis(knR);	
-	if (pController->GetButton(knMoveToWall))
+	if (pController->GetButton(knMoveToWallButton))
 	{
 		// implement move-to-wall logic based on sensors here
 	}
-	else if (pController->GetButton(knStrafe))
+	else if (pController->GetButton(knStrafeButton))
 	{
 		// implement strafing logic here
 	}
@@ -348,8 +427,43 @@ void KBot::ComputeActuators(Controller* pController)
 {
 	ComputeControllerXYR(pController);
 	ComputeGyroXYR();
+	ComputeArm(pController);
 }
 
+/*!
+Compute all the arm functions from the controller values
+*/
+void KBot::ComputeArm(Controller *pController)
+{
+	if (pController->GetButton(knArmParked))
+	{
+		m_fTargetArmAngle = 0.0f;
+		m_nWristPosition = 0;
+	}
+	else
+	{
+		if (pController->GetButton(knWristInButton))
+		{
+			m_nWristPosition = 0;
+		}
+		else if (pController->GetButton(knWristOutButton))
+		{
+			m_nWristPosition = 1;
+		}
+		if (pController->GetButton(knArmHigh))
+		{
+			m_fTargetArmAngle = 30.0f;
+		}
+		else if (pController->GetButton(knArmMiddle))
+		{
+			m_fTargetArmAngle = 20.0f;
+		}
+		if (pController->GetButton(knArmLow))
+		{
+			m_fTargetArmAngle = 10.0f;
+		}
+	}
+}
 /*!
 This is where the other half of the modal logic lives.  Some of
 it is in the ComputeControllerXYR() based on what buttons are 
@@ -371,7 +485,6 @@ void KBot::ComputeWeights(Controller* pController)
 	if (fabs(m_mapR[knDriverInput]) > 0.1f)	// let stick have control
 	{
 		m_fGyroSetPoint = m_mapAnalogSensors[knGyro];
-		m_mapWeightR[knGyroTracking] = 0.0f;
 	}
 	else						// let gyro have control
 	{

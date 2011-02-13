@@ -1,10 +1,21 @@
 #ifndef MAPPINGS_H
 #define MAPPINGS_H
 
-//! Button indices (not an enum for type purposes)
-const int knMoveToWall = 3;
-const int knStrafe = 4;
+//! Buttons per stick
+const int knButtons = 10;
 
+//! Axes per stick
+const int knAxes = 5;
+
+//! Button indices (not an enum for type purposes)
+const int knMoveToWallButton = 3;
+const int knStrafeButton = 4;
+const int knArmParkedButton = knButtons+3; // button 4 on operator stick
+const int knArmLowButton = knButtons+0; // button 1 on operator stick
+const int knArmMiddleButton = knButtons+1; // button 2 on operator stick
+const int knArmHighButton = knButtons+2; // button 3 on operator stick
+const int knWristInButton = knButtons+4; // not sure
+const int knWristOutButton = knButtons+5; // not sure
 
 //! Axis mappings
 const int knX = 0;
@@ -28,6 +39,29 @@ enum MotorMappings
 	knUpperRollerJaguar = 7,
 };
 
+//! Arm states
+enum ArmStates
+{
+	knArmParked,  // wrist in, arm down, all motors stopped
+	knArmLow,
+	knArmMiddle,
+	knArmHigh,
+};
+
+//! Wrist states (ignored if arm parked)
+enum WristStates
+{
+	knWristIn,
+	knWristOut,
+};
+
+//! Minibot deployer states
+enum MiniBotStates
+{
+	knDeployerIn,
+	knDeployerOut,
+};
+
 //! The solenoid ids
 enum SolenoidMappings
 {
@@ -39,6 +73,12 @@ enum SolenoidMappings
 	knDeployerInSolenoid = 6,
 };
 
+//! The relay ids
+enum RelayMappings
+{
+	knCompressorRelay = 1,
+};
+
 //! The analog sensor mappings
 enum AnalogMapping
 {
@@ -47,24 +87,25 @@ enum AnalogMapping
 	knLeftUltrasound = 0xE2,
 	knRightIRSensor = 3,
 	knRightUltrasound = 0xE0,
-	knAccelerationX = 4,
-	knAccelerationY = 5,
-	knAccelerationZ = 6,
-	knArmAngle = 7,
-	knArmDistance = 8,
+	knArmAngle = 4,
+	knTubeIR = 5,
+	knAccelerometer = 0x3A,
+	knAccelerationX,	// these will just be sequential after 0x3A
+	knAccelerationY,
+	knAccelerationZ,
 };
 
 //! The digital sensor mappings
 enum DigitalMapping
 {
-	knWristInLimit = 1,
-	knWristOutLimit = 2,
-	knLineRight = 3,
-	knLineLeft = 4,
-	knLineBack = 5,
-	knRetroReflector = 6,
-	knArmUpLimit = 7,
-	knArmDownLimit = 8,
+	knLineRight = 1,
+	knLineLeft = 2,
+	knLineBack = 3,
+	knRetroReflector = 4,
+	knTubeLeft = 5,
+	knTubeRight = 6,
+	knCompressorLimit = 7,
+	knRecordSwitch = 8,
 };
 
 //! The calculation mappings

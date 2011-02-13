@@ -27,8 +27,9 @@ public:
 
 private:
 	
-	//! the two joystick being used
-	Joystick *m_pStick;
+	//! the two joysticks being used (actually xbox controllers)
+	Joystick *m_pDriverStick;
+	Joystick *m_pOperatorStick;
 
 	//! output stream for recording
 	std::ofstream *m_pOutStream;

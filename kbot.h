@@ -66,6 +66,9 @@ public:
 
 protected:
 	
+	//! Handle compressor functions
+	void ControlCompressor(void);
+
 	//! Reset the whole robot
 	void ResetRobot(bool bRecordTeleop = false);
 	
@@ -93,6 +96,9 @@ protected:
 	// Compute gyro inputs and weight
 	void ComputeGyroXYR();
 	
+	// Compute the arm actuator outputs
+	void ComputeArm(Controller* pController);
+	
 	//! Compute the weight given each of the inputs
 	void ComputeWeights(Controller* pController);
 	
@@ -114,6 +120,11 @@ protected:
 private:
 	static const int kPeriodicSpeed;
 	
+	//! Estimated robot position, orienation and velocity
+	std::vector<float> m_vecPosition;
+	float m_fOrientation; // positive CCW, 0->360
+	std::vector<float> m_vecVelocity;
+
 	//! Digital sensor values
 	std::map<DigitalMapping, int> m_mapDigitalSensors;
 	
@@ -127,16 +138,28 @@ private:
 	std::map<CalculationMapping, float> m_mapR;
 	//@}
 	
-	//! Arm state values
-	//@{
-	float m_fArmAngle;
-	int m_nWrist;	// -1 is in (folded), +1 is out (extended)
-	//@}
-	
 	//! Weight vector (appliesto x/y/r from each source)
+	//@{
 	std::map<CalculationMapping, float> m_mapWeightX;
 	std::map<CalculationMapping, float> m_mapWeightY;
 	std::map<CalculationMapping, float> m_mapWeightR;
+	//@}
+
+	//! arm angle we want
+	float m_fTargetArmAngle;
+	
+	//! wrist position we want (1 == out, 0 == in)
+	int m_nWristPosition;
+	
+	//! jaw position we want (1 == open, 0 == closed)
+	int m_nJawPosition;
+	
+	//! mini-bot deployer position we want (1 == out, 0 == in)
+	int m_nDeployerPosition;
+	
+	//! jaw roller speeds
+	float m_fLowerJawRollerSpeed;
+	float m_fUpperJawRollerSpeed;
 	
 	///*************ACTUATORS******************
 	//! Motor controllers for body
@@ -171,19 +194,35 @@ private:
 	DistanceSensor* m_pLeftIRSensor;
 	DistanceSensor* m_pRightIRSensor;
 	
+	// Arm angle sensor
+	AnalogChannel* m_pArmAngle;
+	
 	// Declare variables for the controllers
 	TeleopController *m_pTeleopController;
 	AutonomousController *m_pAutonomousController;
 
-	// digital inputs
-	DigitalInput* m_pWristInLimit;
-	DigitalInput* m_pWristOutLimit;
+	// compressor control and sensor
+	Relay	*m_pCompressorRelay;
+	DigitalInput *m_pCompressorLimit;
+	
+	// line sensors
 	DigitalInput* m_pLineRight;
 	DigitalInput* m_pLineLeft;
 	DigitalInput* m_pLineBack;
+	
+	// tube sensors
+	DigitalInput* m_pTubeLeft;
+	DigitalInput* m_pTubeRight;
+	AnalogChannel* m_pTubeIR;
+	
+	// retro-reflector (if we use it)
 	DigitalInput* m_pRetroReflector;
-	DigitalInput* m_pArmUpLimit;
-	DigitalInput* m_pArmDownLimit;
+	
+	// Teleop record mode switch
+	DigitalInput* m_pRecordSwitch;
+
+	// accelerometer
+	ADXL345_I2C* m_pAccelerometer;
 	
 }; // class declaration
 

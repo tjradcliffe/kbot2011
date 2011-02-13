@@ -4,6 +4,9 @@
 // standard includes
 #include <vector>
 
+// local includes
+#include "mappings.h"
+
 /*!
 Pure virtual base class for the system controller,
 which abstrcts the operator control device (joysticks etc).
@@ -17,11 +20,13 @@ public:
 	//! Constructor sets up axes and zeros time count
 	Controller() 
 	{
-		m_nAxisNumber = 5;	// make room for axis values
-		m_vecAxes.resize(m_nAxisNumber);
+		m_nStickNumber = 2;	// we have two "joysticks" as input
 
-		m_nButtonNumber = 10; // make room for button values
-		m_vecButtons.resize(m_nButtonNumber);
+		m_nAxisNumber = knAxes;	// make room for axis values (per stick)
+		m_vecAxes.resize(m_nStickNumber*m_nAxisNumber);
+
+		m_nButtonNumber = knButtons; // make room for button values (per stick)
+		m_vecButtons.resize(m_nStickNumber*m_nButtonNumber);
 		
 		m_nTimeCount = 0;
 	}
@@ -52,12 +57,15 @@ protected:
 	//! The axis states
 	std::vector<float> m_vecAxes;
 	
-	//! Number of joystick axes
+	//! Number of axes per joystick
 	int m_nAxisNumber;
 	
-	//! Number of joystick buttons
+	//! Number of buttons per joystick
 	int m_nButtonNumber;
 
+	//! The number of joysticks 
+	int m_nStickNumber;
+	
 	//! The number of times update has been called
 	int m_nTimeCount;
 };

@@ -5,10 +5,15 @@
 // standard includes
 #include <iostream>
 
+static int knOperatorStick = 1;
+static int knDriverStick = 2;
+
 TeleopController::TeleopController(std::string strOutputFilename)
 {
 	// xbox controller appears as single USB joystick
-	m_pStick = new Joystick(2);
+	m_pDriverStick = new Joystick(knDriverStick);
+	m_pOperatorStick = new Joystick(knOperatorStick);
+	
 	m_strOutputFilename = strOutputFilename;
 
 	m_pOutStream = 0;
@@ -16,7 +21,8 @@ TeleopController::TeleopController(std::string strOutputFilename)
 
 TeleopController::~TeleopController()
 {
-	delete m_pStick;
+	delete m_pOperatorStick;
+	delete m_pDriverStick;
 	delete m_pOutStream;
 }
 
@@ -48,11 +54,19 @@ void TeleopController::Update()
 {
 	for (int nIndex = 0; nIndex < m_nAxisNumber; ++nIndex)
 	{
-		m_vecAxes[nIndex] = m_pStick->GetRawAxis(nIndex+1);
+		m_vecAxes[nIndex] = m_pDriverStick->GetRawAxis(nIndex+1);
+	}
+	for (int nIndex = 0; nIndex < m_nAxisNumber; ++nIndex)
+	{
+		m_vecAxes[m_nAxisNumber+nIndex] = m_pOperatorStick->GetRawAxis(nIndex+1);
 	}
 	for (int nIndex = 0; nIndex < m_nButtonNumber; ++nIndex)
 	{
-		m_vecButtons[nIndex] = m_pStick->GetRawButton(nIndex+1);
+		m_vecButtons[nIndex] = m_pDriverStick->GetRawButton(nIndex+1);
+	}
+	for (int nIndex = 0; nIndex < m_nButtonNumber; ++nIndex)
+	{
+		m_vecButtons[m_nButtonNumber+nIndex] = m_pOperatorStick->GetRawButton(nIndex+1);
 	}
 
 	if (0 != m_pOutStream)
