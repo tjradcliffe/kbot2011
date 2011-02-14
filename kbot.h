@@ -106,13 +106,16 @@ protected:
 	void UpdateActuators();
 
 	//! Update the wheel speeds
-	void UpdateWheelSpeeds();
+	void UpdateMotors();
 	
-	//! Update the arm and wrist position
-	void UpdateArmPosition();
+	//! Update the wrist position
+	void UpdateWrist();
 	
-	//! Update the roller claw motor speeds
-	void UpdateRollerClaw();
+	//! Update the roller claw jaw position
+	void UpdateJaw();
+	
+	//! Update the deployer position
+	void UpdateDeployer();
 	
 	//! Update the driver station (extended IO)
 	void UpdateDriverStation();

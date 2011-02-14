@@ -27,22 +27,15 @@ KBot::KBot(void)
 	
 	// Create a robot using standard right/left robot drive on PWMS 1, 2, 3, and #4
 	m_pLeftFrontJaguar = new CANJaguar(knLeftFrontJaguar, CANJaguar::kSpeed);
-	m_pLeftFrontJaguar->Set(0.0);
 	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, CANJaguar::kSpeed);
-	m_pLeftBackJaguar->Set(0.0);
 
 	m_pRightFrontJaguar = new CANJaguar(knRightFrontJaguar, CANJaguar::kSpeed);
-	m_pRightFrontJaguar->Set(0.0);
 	m_pRightBackJaguar = new CANJaguar(knRightBackJaguar, CANJaguar::kSpeed);
-	m_pRightBackJaguar->Set(0.0);
 	
 	// Arm actuators
 	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
-	m_pArmJaguar->Set(0.0);
 	m_pLowerRollerJaguar = new CANJaguar(knLowerRollerJaguar, CANJaguar::kVoltage);
-	m_pLowerRollerJaguar->Set(0.0);
 	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
-	m_pUpperRollerJaguar->Set(0.0);
 	
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
@@ -64,7 +57,7 @@ KBot::KBot(void)
 	m_pAutonomousController = new AutonomousController(this, "test.dat");
 	
 	// gyro
-	m_pGyro = new Gyro(knGyro);
+	m_pGyro = new Gyro(knAnalogSlot, knGyro);
 	m_fGyroSetPoint = 0.0f;
 
 	// accelerometer
@@ -493,7 +486,7 @@ void KBot::ComputeWeights(Controller* pController)
 	}	
 }
 
-void KBot::UpdateWheelSpeeds()
+void KBot::UpdateMotors()
 {
 	float fX = 0.0f;	// we will eventually add arm 
 	float fY = 0.0f;	// and other values here
@@ -522,24 +515,33 @@ void KBot::UpdateWheelSpeeds()
 	m_pRightFrontJaguar->Set(wheelSpeeds[1]*100.0 , syncGroup);
 	m_pRightBackJaguar->Set(wheelSpeeds[2]*100.0, syncGroup);
 	m_pLeftBackJaguar->Set(wheelSpeeds[3]*100.0 , syncGroup);
+	m_pLowerRollerJaguar->Set(m_fLowerJawRollerSpeed , syncGroup);
+	m_pUpperRollerJaguar->Set(m_fUpperJawRollerSpeed , syncGroup);
+	m_pArmJaguar->Set(m_fTargetArmAngle , syncGroup);
 	CANJaguar::UpdateSyncGroup(syncGroup);
 }
 
-void KBot::UpdateArmPosition()
+void KBot::UpdateWrist()
 {
 	
 }
 
-void KBot::UpdateRollerClaw()
+void KBot::UpdateJaw()
+{
+	
+}
+
+void KBot::UpdateDeployer()
 {
 	
 }
 
 void KBot::UpdateActuators()
 {
-	UpdateWheelSpeeds();
-	UpdateArmPosition();
-	UpdateRollerClaw();
+	UpdateMotors();
+	UpdateWrist();
+	UpdateJaw();
+	UpdateDeployer();
 }
 
 /**

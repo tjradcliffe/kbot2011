@@ -30,13 +30,13 @@ const int knRelaySlot = 8;
 //! The JAG ids for the various motors
 enum MotorMappings
 {
-	knRightBackJaguar = 5,
-	knLeftBackJaguar = 2,
-	knRightFrontJaguar = 6,
-	knLeftFrontJaguar = 3,
-	knArmJaguar = 1,
-	knLowerRollerJaguar = 4,
-	knUpperRollerJaguar = 7,
+	knRightFrontJaguar = 1,
+	knLeftFrontJaguar = 2,
+	knRightBackJaguar = 3,
+	knLeftBackJaguar = 4,
+	knArmJaguar = 5,
+	knLowerRollerJaguar = 7,
+	knUpperRollerJaguar = 6,
 };
 
 //! Arm states
@@ -65,10 +65,10 @@ enum MiniBotStates
 //! The solenoid ids
 enum SolenoidMappings
 {
-	knWristOutSolenoid = 1,
-	knWristInSolenoid = 2,
-	knJawOpenSolenoid = 3,
-	knJawClosedSolenoid = 4,
+	knWristInSolenoid = 1,
+	knWristOutSolenoid = 2,
+	knJawClosedSolenoid = 3,
+	knJawOpenSolenoid = 4,
 	knDeployerOutSolenoid = 5,
 	knDeployerInSolenoid = 6,
 };
@@ -76,19 +76,23 @@ enum SolenoidMappings
 //! The relay ids
 enum RelayMappings
 {
-	knCompressorRelay = 1,
+	knCompressorRelay = 1,  // ???
+	knRedLight = 2,  // ???
+	knWhiteLight = 3,  // ???
+	knBlueLight = 4,  // ???
 };
 
 //! The analog sensor mappings
 enum AnalogMapping
 {
-	knGyro = 1,
-	knLeftIRSensor = 2,
+	knArmAngle = 1,
+	knTubeIR = 2,
+	knGyroTemp = 3,
+	knGyro = 4,
+	knLeftIRSensor = 5,
+	knRightIRSensor = 6,
 	knLeftUltrasound = 0xE2,
-	knRightIRSensor = 3,
 	knRightUltrasound = 0xE0,
-	knArmAngle = 4,
-	knTubeIR = 5,
 	knAccelerometer = 0x3A,
 	knAccelerationX,	// these will just be sequential after 0x3A
 	knAccelerationY,
@@ -98,14 +102,15 @@ enum AnalogMapping
 //! The digital sensor mappings
 enum DigitalMapping
 {
-	knLineRight = 1,
-	knLineLeft = 2,
-	knLineBack = 3,
-	knRetroReflector = 4,
-	knTubeLeft = 5,
-	knTubeRight = 6,
-	knCompressorLimit = 7,
+	knCompressorLimit = 1,
+	knTubeLeft = 2,
+	knTubeRight = 3,
+	knLineRight = 4,  // ???
+	knLineLeft = 5,   // ???
+	knLineBack = 6,   // ???
+	knRetroReflector = 7,
 	knRecordSwitch = 8,
+	knRecoverSwitch = 9,
 };
 
 //! The calculation mappings
