@@ -21,6 +21,8 @@ const int knWristOutButton = knButtons+5; // not sure
 const int knX = 0;
 const int knY = 1;
 const int knR = 2;
+const int knRollInOut = 6;
+const int knRollAround = 7;
 
 // The cRIO slots for various interfaces
 const int knAnalogSlot = 1;
@@ -42,17 +44,17 @@ enum MotorMappings
 //! Arm states
 enum ArmStates
 {
-	knArmParked,  // wrist in, arm down, all motors stopped
-	knArmLow,
-	knArmMiddle,
-	knArmHigh,
+	knArmParked = knButtons,  // wrist in, arm down, all motors stopped
+	knArmLow = knButtons+1,
+	knArmMiddle = knButtons+2,
+	knArmHigh = knButtons+3,
 };
 
 //! Wrist states (ignored if arm parked)
 enum WristStates
 {
-	knWristIn,
-	knWristOut,
+	knWristIn = knButtons+4,
+	knWristOut = knButtons+6,
 };
 
 //! Minibot deployer states
@@ -85,10 +87,10 @@ enum RelayMappings
 //! The analog sensor mappings
 enum AnalogMapping
 {
-	knArmAngle = 1,
-	knTubeIR = 2,
-	knGyroTemp = 3,
-	knGyro = 4,
+	knGyroTemp = 1,
+	knGyro = 2,
+	knArmAngle = 3,
+	knTubeIR = 4,
 	knLeftIRSensor = 5,
 	knRightIRSensor = 6,
 	knLeftUltrasound = 0xE2,
@@ -103,12 +105,12 @@ enum AnalogMapping
 enum DigitalMapping
 {
 	knCompressorLimit = 1,
-	knTubeLeft = 2,
-	knTubeRight = 3,
-	knLineRight = 4,  // ???
-	knLineLeft = 5,   // ???
-	knLineBack = 6,   // ???
-	knRetroReflector = 7,
+	knTubeRight = 2,	// CHECKED (0 = tube)
+	knTubeLeft = 3,		// CHECKED (0 = tube)
+	knLineRight = 6,  // CHECKED (1 = line)
+	knLineLeft = 5,   // CHECKED (1 = line)
+	knLineBack = 4,   // CHECKED (1 = line)
+	knRetroReflector = 7, // CHECKED (0 = present)
 	knRecordSwitch = 8,
 	knRecoverSwitch = 9,
 };

@@ -26,14 +26,21 @@
             </listAttribute>
             <listAttribute key="BLD::Info|Incl|PPC603gnu">
                 <stringAttribute value="-I$(WIND_BASE)/target/h"/>
-                <stringAttribute value="-I$(WIND_BASE)/target/h/WPILib"/>
+                <stringAttribute value="-IC:/windriver/workspace/WPILib"/>
                 <stringAttribute value="-I$(WIND_BASE)/target/h/wrn/coreip"/>
             </listAttribute>
             <listAttribute key="BLD::Info|Libs|PPC32diab">
                 <stringAttribute value="$(WIND_BASE)/target/lib/WPILib.a"/>
+                <stringAttribute value="-L C:/windriver/workspace/WPILib/PPC603gnu/WPILib/Debug/Objects/WPILib"/>
+            </listAttribute>
+            <listAttribute key="BLD::Info|Libs|PPC32gnu">
+                <stringAttribute value="-L C:/windriver/workspace/WPILib/PPC603gnu/WPILib/Debug/Objects/WPILib"/>
+            </listAttribute>
+            <listAttribute key="BLD::Info|Libs|PPC603diab">
+                <stringAttribute value="-L C:/windriver/workspace/WPILib/PPC603gnu/WPILib/Debug/Objects/WPILib"/>
             </listAttribute>
             <listAttribute key="BLD::Info|Libs|PPC603gnu">
-                <stringAttribute value="$(WIND_BASE)/target/lib/WPILib.a"/>
+                <stringAttribute value="C:/windriver/workspace/WPILib/PPC603gnu/WPILib/Debug/WPILib.a"/>
             </listAttribute>
             <listAttribute key="BLD::Info|Macros">
                 <stringAttribute value="VX_CPU_FAMILY"/>

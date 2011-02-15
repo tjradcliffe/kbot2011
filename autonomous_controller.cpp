@@ -33,11 +33,11 @@ void AutonomousController::Update()
 	{
 		int nTimeCount;
 		(*pInStream) >> nTimeCount; // not used 
-		for (int nIndex = 0; nIndex < m_nAxisNumber; ++nIndex)
+		for (int nIndex = 0; nIndex < m_nStickNumber*m_nAxisNumber; ++nIndex)
 		{
 			(*pInStream) >> m_vecAxes[nIndex];
 		}
-		for (int nIndex = 0; nIndex < m_nButtonNumber; ++nIndex)
+		for (int nIndex = 0; nIndex < m_nStickNumber*m_nButtonNumber; ++nIndex)
 		{
 			(*pInStream) >> m_vecButtons[nIndex];
 		}

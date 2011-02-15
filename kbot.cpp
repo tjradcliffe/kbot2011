@@ -27,10 +27,14 @@ KBot::KBot(void)
 	
 	// Create a robot using standard right/left robot drive on PWMS 1, 2, 3, and #4
 	m_pLeftFrontJaguar = new CANJaguar(knLeftFrontJaguar, CANJaguar::kSpeed);
+	m_pLeftFrontJaguar->Set(0.0f);
 	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, CANJaguar::kSpeed);
+	m_pLeftBackJaguar->Set(0.0f);
 
 	m_pRightFrontJaguar = new CANJaguar(knRightFrontJaguar, CANJaguar::kSpeed);
+	m_pRightFrontJaguar->Set(0.0f);
 	m_pRightBackJaguar = new CANJaguar(knRightBackJaguar, CANJaguar::kSpeed);
+	m_pRightBackJaguar->Set(0.0f);
 	
 	// Arm actuators
 	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
@@ -147,7 +151,7 @@ void KBot::RobotInit()
 	m_pLeftBackJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pArmJaguar->SetPID(0.0, 0.0, 500.0);  // as suggested in forums
+	m_pArmJaguar->SetPID(1.0, 0.0, 500.0);  // as suggested in forums
 	m_pLowerRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pUpperRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	
@@ -175,6 +179,7 @@ void KBot::RobotInit()
 	
 	m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
 	
+	m_pGyro->Reset();
 	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
 	
 	m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
@@ -205,6 +210,14 @@ Called at start of disabled
 void KBot::DisabledInit() 
 {
 	// do NOT reset robot here!
+	GetWatchdog().SetEnabled(false);
+	m_pLeftFrontJaguar->SetSafetyEnabled(false);
+	m_pLeftBackJaguar->SetSafetyEnabled(false);
+	m_pRightFrontJaguar->SetSafetyEnabled(false);
+	m_pRightBackJaguar->SetSafetyEnabled(false);
+	m_pArmJaguar->SetSafetyEnabled(false);
+	m_pLowerRollerJaguar->SetSafetyEnabled(false);
+	m_pUpperRollerJaguar->SetSafetyEnabled(false);
 }
 
 /*!
@@ -212,6 +225,13 @@ Called at start of autonomous
 */
 void KBot::AutonomousInit() 
 {
+	m_pLeftFrontJaguar->SetSafetyEnabled(true);
+	m_pLeftBackJaguar->SetSafetyEnabled(true);
+	m_pRightFrontJaguar->SetSafetyEnabled(true);
+	m_pRightBackJaguar->SetSafetyEnabled(true);
+	m_pArmJaguar->SetSafetyEnabled(true);
+	m_pLowerRollerJaguar->SetSafetyEnabled(true);
+	m_pUpperRollerJaguar->SetSafetyEnabled(true);
 	ResetRobot();
 }
 
@@ -221,6 +241,13 @@ here, so a full reset may not be what we need.
 */
 void KBot::TeleopInit() 
 {
+	m_pLeftFrontJaguar->SetSafetyEnabled(true);
+	m_pLeftBackJaguar->SetSafetyEnabled(true);
+	m_pRightFrontJaguar->SetSafetyEnabled(true);
+	m_pRightBackJaguar->SetSafetyEnabled(true);
+	m_pArmJaguar->SetSafetyEnabled(true);
+	m_pLowerRollerJaguar->SetSafetyEnabled(true);
+	m_pUpperRollerJaguar->SetSafetyEnabled(true);
 	ResetRobot(true);  // true so we get new file for recording
 }
 
@@ -235,10 +262,9 @@ void KBot::DisabledPeriodic(void)
 
 	ReadSensors();	// fill sensor arrays
 
-	if (nCount == 25)  // once every half second
+	if (nCount == 50)  // once per second
 	{
 		nCount = 0;
-		
 		// display analog inputs
 		std::map<AnalogMapping, float>::iterator itAnalog = m_mapAnalogSensors.begin();
 		std::cerr.precision(3);
@@ -247,7 +273,7 @@ void KBot::DisabledPeriodic(void)
 			std::cerr << itAnalog->first << ": " << itAnalog->second << " | ";
 		}
 		std::cerr << std::endl;
-		
+#ifdef NOT_NOW
 		// display digital inputs
 		std::map<DigitalMapping, int>::iterator itDigital = m_mapDigitalSensors.begin();
 		for(; itDigital != m_mapDigitalSensors.end(); ++itDigital)
@@ -256,6 +282,7 @@ void KBot::DisabledPeriodic(void)
 		}
 		std::cerr << std::endl;
 		std::cerr << "===========" << std::endl;
+#endif
 	}
 	++nCount;
 }
@@ -266,7 +293,7 @@ Called on a clock during autonomous
 void KBot::AutonomousPeriodic(void)
 {
 	GetWatchdog().Feed();
-
+	
 	RunRobot(m_pAutonomousController);
 }
 
@@ -430,31 +457,35 @@ void KBot::ComputeArm(Controller *pController)
 {
 	if (pController->GetButton(knArmParked))
 	{
-		m_fTargetArmAngle = 0.0f;
+		m_fTargetArmAngle = 0;
 		m_nWristPosition = 0;
+		m_fLowerJawRollerSpeed = 0.0;
+		m_fUpperJawRollerSpeed = 0.0;
 	}
 	else
 	{
-		if (pController->GetButton(knWristInButton))
+		if (pController->GetButton(knWristIn))
 		{
 			m_nWristPosition = 0;
 		}
-		else if (pController->GetButton(knWristOutButton))
+		else if (pController->GetButton(knWristOut))
 		{
 			m_nWristPosition = 1;
 		}
 		if (pController->GetButton(knArmHigh))
 		{
-			m_fTargetArmAngle = 30.0f;
+			m_fTargetArmAngle = 1500.0f;
 		}
 		else if (pController->GetButton(knArmMiddle))
 		{
-			m_fTargetArmAngle = 20.0f;
+			m_fTargetArmAngle = 600.0f;
 		}
 		if (pController->GetButton(knArmLow))
 		{
-			m_fTargetArmAngle = 10.0f;
+			m_fTargetArmAngle = 300.0f;
 		}
+		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
+		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);		
 	}
 }
 /*!
@@ -501,22 +532,22 @@ void KBot::UpdateMotors()
 		fR += m_mapWeightR[nIndex]*m_mapR[nIndex];
 	}
 	
-	double wheelSpeeds[4];
-	wheelSpeeds[0] = fX + fY + fR;
-	wheelSpeeds[1] = -fX + fY - fR;
-	wheelSpeeds[2] = -fX + fY + fR;
-	wheelSpeeds[3] = fX + fY - fR;
+	double wheelSpeeds[4];  // signs changed to get rotation right
+	wheelSpeeds[0] = fX + fY - fR;
+	wheelSpeeds[1] = -fX + fY + fR;
+	wheelSpeeds[2] = -fX + fY - fR;
+	wheelSpeeds[3] = fX + fY + fR;
 	
 	DeadbandNormalize(wheelSpeeds);
 
-	// actually set speeds
+	// actually set speeds (negate right side due to motor mounting)
 	UINT8 syncGroup = 0x80;	
 	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*100.0 , syncGroup);
-	m_pRightFrontJaguar->Set(wheelSpeeds[1]*100.0 , syncGroup);
-	m_pRightBackJaguar->Set(wheelSpeeds[2]*100.0, syncGroup);
+	m_pRightFrontJaguar->Set(-wheelSpeeds[1]*100.0 , syncGroup);
+	m_pRightBackJaguar->Set(-wheelSpeeds[2]*100.0, syncGroup);
 	m_pLeftBackJaguar->Set(wheelSpeeds[3]*100.0 , syncGroup);
-	m_pLowerRollerJaguar->Set(m_fLowerJawRollerSpeed , syncGroup);
-	m_pUpperRollerJaguar->Set(m_fUpperJawRollerSpeed , syncGroup);
+	m_pLowerRollerJaguar->Set(10*m_fLowerJawRollerSpeed , syncGroup);
+	m_pUpperRollerJaguar->Set(10*m_fUpperJawRollerSpeed , syncGroup);
 	m_pArmJaguar->Set(m_fTargetArmAngle , syncGroup);
 	CANJaguar::UpdateSyncGroup(syncGroup);
 }

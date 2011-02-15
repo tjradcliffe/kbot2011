@@ -72,13 +72,13 @@ void TeleopController::Update()
 	if (0 != m_pOutStream)
 	{
 		(*m_pOutStream) << m_nTimeCount << " ";
-		for (int nIndex = 0; nIndex < m_nAxisNumber; ++nIndex)
+		for (int nIndex = 0; nIndex < m_nStickNumber*m_nAxisNumber; ++nIndex)
 		{
 			(*m_pOutStream) << m_vecAxes[nIndex] << " ";
 		}
 		for (int nIndex = 0; nIndex < m_nButtonNumber; ++nIndex)
 		{
-			(*m_pOutStream) << m_vecButtons[nIndex] << " ";
+			(*m_pOutStream) << m_nStickNumber*m_vecButtons[nIndex] << " ";
 		}
 		(*m_pOutStream) << std::endl;
 	}
