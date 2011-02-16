@@ -148,10 +148,11 @@ private:
 	std::map<CalculationMapping, float> m_mapWeightR;
 	//@}
 
-	//! arm angle we want
+	//! arm angle and speed we want
 	float m_fTargetArmAngle;
+	float m_fArmSpeed;
 	
-	//! wrist position we want (1 == out, 0 == in)
+	//! wrist position we want (0 == in, 1 == out)
 	int m_nWristPosition;
 	
 	//! jaw position we want (1 == open, 0 == closed)

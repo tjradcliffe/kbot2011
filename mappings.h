@@ -7,6 +7,13 @@ const int knButtons = 10;
 //! Axes per stick
 const int knAxes = 5;
 
+/*
+NOTE: Xbox controller must be on USB 2
+      Logitech controller must be on USB 1
+      
+XBOX 
+*/
+
 //! Various button indices (most in enums)
 const int knMoveToWallButton = 3;
 const int knStrafeButton = 4;
@@ -17,8 +24,9 @@ const int knDeployerOutButton = 7;
 const int knX = 0;
 const int knY = 1;
 const int knR = 2;
-const int knRollInOut = 6;
 const int knRollAround = 7;
+const int knRollInOut = 8;
+const int knArmUpDown = 6;
 
 // The cRIO slots for various interfaces
 const int knAnalogSlot = 1;

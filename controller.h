@@ -46,6 +46,12 @@ public:
 	float GetAxis(int nAxisIndex) {return m_vecAxes[nAxisIndex];}
 	//@}
 
+	//! get all buttons
+	std::vector<int> GetButtons() {return m_vecButtons;}
+	
+	//! Get all axes
+	std::vector<float> GetAxes() {return m_vecAxes;}
+	
 	//! Update the arrays from hardware etc
 	virtual void Update() = 0;
 	

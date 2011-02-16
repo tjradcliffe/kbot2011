@@ -37,17 +37,16 @@ KBot::KBot(void)
 	m_pRightBackJaguar->Set(0.0f);
 	
 	// Arm actuators
-	//m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kVoltage);
-	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
+	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kVoltage);
+	//m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
 	m_pLowerRollerJaguar = new CANJaguar(knLowerRollerJaguar, CANJaguar::kVoltage);
 	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
 	
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
-	m_pArmAngle->SetAverageBits(0); //kAverageBits);
-	m_pArmAngle->SetOversampleBits(5); //kOversampleBits);
+	//m_pArmAngle->SetAverageBits(0); //kAverageBits);
+	//m_pArmAngle->SetOversampleBits(5); //kOversampleBits);
 	//float sampleRate = kSamplesPerSecond * (1 << (kAverageBits + kOversampleBits));
-	m_pArmAngle->GetModule()->SetSampleRate(10); //50 * (1<<5));//sampleRate);
 
 	m_nDeployerPosition = 0;	// IN
 	m_nWristPosition = 0;		// FOLDED
@@ -147,7 +146,9 @@ is created.  Currently it just calls ResetRobot()
 void KBot::RobotInit()
 {
 	GetWatchdog().SetEnabled(true);
-	
+
+	AnalogModule::GetInstance(knAnalogSlot)->SetSampleRate(50000); //50 * (1<<5));//sampleRate);
+
 	m_pLeftFrontJaguar->SetSafetyEnabled(true);
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
 	m_pRightFrontJaguar->SetSafetyEnabled(true);
@@ -160,7 +161,8 @@ void KBot::RobotInit()
 	m_pLeftBackJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pArmJaguar->SetPID(1100.0, 50.0, 500.0);  // d=500.0 as suggested in forums
+	//m_pArmJaguar->SetPID(1100.0, 50.0, 500.0);  // d=500.0 as suggested in forums
+	m_pArmJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pLowerRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pUpperRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	
@@ -168,7 +170,7 @@ void KBot::RobotInit()
 	m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
 	m_pRightFrontJaguar->ConfigEncoderCodesPerRev(360);
 	m_pRightBackJaguar->ConfigEncoderCodesPerRev(360);
-	m_pArmJaguar->SetPositionReference(CANJaguar::kPosRef_Potentiometer);
+	//m_pArmJaguar->SetPositionReference(CANJaguar::kPosRef_Potentiometer);
 	
 	m_pLeftFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pLeftBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
@@ -204,7 +206,8 @@ void KBot::RobotInit()
 	m_pLeftIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 	m_pRightIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 	
-	m_fTargetArmAngle = 0.0f;  // folded
+	m_fTargetArmAngle = m_pArmAngle->GetValue();  // whatever current position is
+	m_fArmSpeed = 0.0f;
 	m_nWristPosition = 0;  // in
 	m_nJawPosition = 0;  // open
 	m_nDeployerPosition = 0; // in
@@ -271,11 +274,41 @@ void KBot::DisabledPeriodic(void)
 
 	ReadSensors();	// fill sensor arrays
 
-	if (nCount == 50)  // once per second
+	if (nCount == 100)  // once per two seconds
 	{
 		nCount = 0;
+	
+//#define CONTROLLER_DEBUG
+//#define ANALOG_DEBUG
+//#define DIGITAL_DEBUG
+#ifdef CONTROLLER_DEBUG
+		m_pTeleopController->Update();
+		const std::vector<int>& vecButtons = m_pTeleopController->GetButtons();
+		for(unsigned int nIndex = 0; nIndex < vecButtons.size()/2; ++nIndex)
+		{
+			if (vecButtons[nIndex] == 1)
+			{
+				std::cerr << "(" << nIndex << " : " << vecButtons[nIndex] << ") ";
+			}
+		}
+		std::cerr << std::endl;
+		for(unsigned int nIndex = vecButtons.size()/2; nIndex < vecButtons.size(); ++nIndex)
+		{
+			if (vecButtons[nIndex] == 1)
+			{
+				std::cerr << "(" << nIndex << " : " << vecButtons[nIndex] << ") ";
+			}
+		}
+		std::cerr << std::endl;
+		const std::vector<float>& vecAxes = m_pTeleopController->GetAxes();
+		for(unsigned int nIndex = 0; nIndex < vecAxes.size(); ++nIndex)
+		{
+			std::cerr << "(" << nIndex << " : " << vecAxes[nIndex] << ") ";
+		}
+		std::cerr << std::endl << "===========" << std::endl;
+#endif
 		
-//#ifdef NOT_NOW
+#ifdef ANALOG_DEBUG
 		// display analog inputs
 		std::map<AnalogMapping, float>::iterator itAnalog = m_mapAnalogSensors.begin();
 		std::cerr.precision(4);
@@ -284,9 +317,9 @@ void KBot::DisabledPeriodic(void)
 			std::cerr << itAnalog->first << ": " << itAnalog->second << " | ";
 		}
 		std::cerr << std::endl;
-//#endif
+#endif
 		
-//#ifdef NOT_NOW
+#ifdef DIGITAL_DEBUG
 		// display digital inputs
 		std::map<DigitalMapping, int>::iterator itDigital = m_mapDigitalSensors.begin();
 		for(; itDigital != m_mapDigitalSensors.end(); ++itDigital)
@@ -295,7 +328,7 @@ void KBot::DisabledPeriodic(void)
 		}
 		std::cerr << std::endl;
 		std::cerr << "===========" << std::endl;
-//#endif
+#endif
 	}
 	++nCount;
 }
@@ -326,7 +359,7 @@ void KBot::TeleopPeriodic(void)
 	{
 		nCount = 0;
 		//std::cerr << m_pArmJaguar->GetPosition() << " <-- " << m_pArmJaguar->Get() << " <-- " << m_mapAnalogSensors[knArmAngle] <<std::endl; 
-		std::cerr << m_mapAnalogSensors[knGyro] << std::endl;
+		std::cerr << m_mapAnalogSensors[knArmAngle] << std::endl;
 	}
 	++nCount;
 }
@@ -516,23 +549,45 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		}
 		if (pController->GetButton(knArmHigh))//4
 		{
-			m_fTargetArmAngle = 0.7f;
+			m_fTargetArmAngle = 495.0f;
 		}
 		else if (pController->GetButton(knArmMiddle))//3
 		{
-			m_fTargetArmAngle = 0.55f;
+			m_fTargetArmAngle = 655.0f;
 		}
 		else if (pController->GetButton(knArmLow))//2
 		{
-			m_fTargetArmAngle = 0.4f;
+			m_fTargetArmAngle = 845.0f;
 		}
-		else
+		
+		float fArmControl = pController->GetAxis(knArmUpDown);
+		if (fabs(fArmControl) > 0.05)	// controller over-ride
 		{
-			//stays in previous position?
+			m_fArmSpeed = 10*fArmControl;
 		}
+		else	// angle-drive
+		{
+			float fArmAngleDifference = m_fTargetArmAngle-m_mapAnalogSensors[knArmAngle];
+			m_fArmSpeed = 10*fArmAngleDifference/1000;
+			if ((fabs(m_fArmSpeed) < 0.5f) && (fabs(fArmAngleDifference) < 2))
+			{
+				m_fArmSpeed = 0.0f;
+			}
+		}
+		
+		// only allow motor to move back into range, positive or negative
+		if ((m_mapAnalogSensors[knArmAngle] > kfArmAngleMax) && (m_fArmSpeed > 0))
+		{
+			m_fArmSpeed = 0;
+		}
+		if ((m_mapAnalogSensors[knArmAngle] < kfArmAngleMin) && (m_fArmSpeed < 0))
+		{
+			m_fArmSpeed = 0;
+		}
+		
 		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
 		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);
-		if ((m_mapDigitalSensors[knTubeRight] == 0) || (m_mapDigitalSensors[knTubeLeft] == 0))
+		if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
 		{
 			m_fLowerJawRollerSpeed = -3.0;
 			m_fUpperJawRollerSpeed = 3.0;
@@ -563,8 +618,15 @@ void KBot::ComputeWeights(Controller* pController)
 	}
 	else						// let gyro have control
 	{
-		m_mapWeightR[knGyroTracking] = 1.0f;
-		m_mapWeightR[knDriverInput] = 0.0f;
+		if (fabs(m_mapR[knGyroTracking]-m_fGyroSetPoint) < 15.0f)
+		{
+			m_mapWeightR[knGyroTracking] = 1.0f;
+			m_mapWeightR[knDriverInput] = 0.0f;
+		}
+		else // something bad has happened!  Rezero gyro
+		{
+			m_fGyroSetPoint = m_mapAnalogSensors[knGyro];			
+		}
 	}	
 }
 
@@ -584,10 +646,10 @@ void KBot::UpdateMotors()
 	}
 	
 	double wheelSpeeds[4];  // signs changed to get rotation right
-	wheelSpeeds[0] = fX + fY - fR;
+	wheelSpeeds[0] = -fX + fY - fR;
 	wheelSpeeds[1] = -fX + fY + fR;
-	wheelSpeeds[2] = -fX + fY - fR;
-	wheelSpeeds[3] = fX + fY + fR;
+	wheelSpeeds[2] = fX + fY + fR;
+	wheelSpeeds[3] = fX + fY - fR;
 	
 	DeadbandNormalize(wheelSpeeds);
 
@@ -599,18 +661,18 @@ void KBot::UpdateMotors()
 	m_pLeftBackJaguar->Set(wheelSpeeds[3]*100.0 , syncGroup);
 	m_pLowerRollerJaguar->Set(10*m_fLowerJawRollerSpeed , syncGroup);
 	m_pUpperRollerJaguar->Set(10*m_fUpperJawRollerSpeed , syncGroup);
-	m_pArmJaguar->Set(m_fTargetArmAngle , syncGroup);
+	m_pArmJaguar->Set(m_fArmSpeed, syncGroup);
 	CANJaguar::UpdateSyncGroup(syncGroup);
 }
 
 void KBot::UpdateWrist()
 {
-	if (m_nWristPosition == 0)	// wrist IN
+	if (m_nWristPosition == 1)	// wrist OUT
 	{
 		m_pWristInSolenoid->Set(true);
 		m_pWristOutSolenoid->Set(false);
 	}
-	else	// wrist OUT
+	else	// wrist IN
 	{
 		m_pWristInSolenoid->Set(false);
 		m_pWristOutSolenoid->Set(true);		
