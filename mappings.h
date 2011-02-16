@@ -7,15 +7,11 @@ const int knButtons = 10;
 //! Axes per stick
 const int knAxes = 5;
 
-//! Button indices (not an enum for type purposes)
+//! Various button indices (most in enums)
 const int knMoveToWallButton = 3;
 const int knStrafeButton = 4;
-const int knArmParkedButton = knButtons+3; // button 4 on operator stick
-const int knArmLowButton = knButtons+0; // button 1 on operator stick
-const int knArmMiddleButton = knButtons+1; // button 2 on operator stick
-const int knArmHighButton = knButtons+2; // button 3 on operator stick
-const int knWristInButton = knButtons+4; // not sure
-const int knWristOutButton = knButtons+5; // not sure
+const int knDeployerInButton = 6;
+const int knDeployerOutButton = 7;
 
 //! Axis mappings
 const int knX = 0;
@@ -36,7 +32,7 @@ enum MotorMappings
 	knLeftFrontJaguar = 2,
 	knRightBackJaguar = 3,
 	knLeftBackJaguar = 4,
-	knArmJaguar = 5,
+	knArmJaguar = 8,
 	knLowerRollerJaguar = 7,
 	knUpperRollerJaguar = 6,
 };
@@ -50,11 +46,13 @@ enum ArmStates
 	knArmHigh = knButtons+3,
 };
 
-//! Wrist states (ignored if arm parked)
-enum WristStates
+//! Wrist & Jaw states (ignored if arm parked)
+enum WristJawStates
 {
 	knWristIn = knButtons+4,
 	knWristOut = knButtons+6,
+	knJawOpen = knButtons+5,
+	knJawClosed = knButtons+7,
 };
 
 //! Minibot deployer states

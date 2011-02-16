@@ -37,13 +37,22 @@ KBot::KBot(void)
 	m_pRightBackJaguar->Set(0.0f);
 	
 	// Arm actuators
+	//m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kVoltage);
 	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
 	m_pLowerRollerJaguar = new CANJaguar(knLowerRollerJaguar, CANJaguar::kVoltage);
 	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
 	
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
+	m_pArmAngle->SetAverageBits(0); //kAverageBits);
+	m_pArmAngle->SetOversampleBits(5); //kOversampleBits);
+	//float sampleRate = kSamplesPerSecond * (1 << (kAverageBits + kOversampleBits));
+	m_pArmAngle->GetModule()->SetSampleRate(10); //50 * (1<<5));//sampleRate);
 
+	m_nDeployerPosition = 0;	// IN
+	m_nWristPosition = 0;		// FOLDED
+	m_nJawPosition = 0;			// CLOSED
+	
 	// Solenoids to control wrist, jaw and swing-arm
 	m_pWristOutSolenoid = new Solenoid(knRelaySlot, knWristOutSolenoid);
 	m_pWristInSolenoid = new Solenoid(knRelaySlot, knWristInSolenoid);
@@ -65,7 +74,7 @@ KBot::KBot(void)
 	m_fGyroSetPoint = 0.0f;
 
 	// accelerometer
-	m_pAccelerometer = new ADXL345_I2C(knDigitalSlot, ADXL345_I2C::kRange_2G);
+	//m_pAccelerometer = new ADXL345_I2C(knDigitalSlot, ADXL345_I2C::kRange_2G);
 	
 	// ultrasounds
 	m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
@@ -151,7 +160,7 @@ void KBot::RobotInit()
 	m_pLeftBackJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pArmJaguar->SetPID(1.0, 0.0, 500.0);  // as suggested in forums
+	m_pArmJaguar->SetPID(1100.0, 50.0, 500.0);  // d=500.0 as suggested in forums
 	m_pLowerRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pUpperRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	
@@ -169,7 +178,7 @@ void KBot::RobotInit()
 	m_pLowerRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pUpperRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 			
-	m_pLeftFrontJaguar->EnableControl();
+	m_pLeftFrontJaguar->EnableControl();//error?
 	m_pLeftBackJaguar->EnableControl();
 	m_pRightFrontJaguar->EnableControl();
 	m_pRightBackJaguar->EnableControl();
@@ -265,15 +274,19 @@ void KBot::DisabledPeriodic(void)
 	if (nCount == 50)  // once per second
 	{
 		nCount = 0;
+		
+//#ifdef NOT_NOW
 		// display analog inputs
 		std::map<AnalogMapping, float>::iterator itAnalog = m_mapAnalogSensors.begin();
-		std::cerr.precision(3);
+		std::cerr.precision(4);
 		for(; itAnalog != m_mapAnalogSensors.end(); ++itAnalog)
 		{
 			std::cerr << itAnalog->first << ": " << itAnalog->second << " | ";
 		}
 		std::cerr << std::endl;
-#ifdef NOT_NOW
+//#endif
+		
+//#ifdef NOT_NOW
 		// display digital inputs
 		std::map<DigitalMapping, int>::iterator itDigital = m_mapDigitalSensors.begin();
 		for(; itDigital != m_mapDigitalSensors.end(); ++itDigital)
@@ -282,7 +295,7 @@ void KBot::DisabledPeriodic(void)
 		}
 		std::cerr << std::endl;
 		std::cerr << "===========" << std::endl;
-#endif
+//#endif
 	}
 	++nCount;
 }
@@ -306,6 +319,16 @@ void KBot::TeleopPeriodic(void)
 	GetWatchdog().Feed();
 	
 	RunRobot(m_pTeleopController);
+
+	static int nCount = 0;
+	
+	if (nCount == 50)  // once per second
+	{
+		nCount = 0;
+		//std::cerr << m_pArmJaguar->GetPosition() << " <-- " << m_pArmJaguar->Get() << " <-- " << m_mapAnalogSensors[knArmAngle] <<std::endl; 
+		std::cerr << m_mapAnalogSensors[knGyro] << std::endl;
+	}
+	++nCount;
 }
 
 /*!
@@ -392,10 +415,10 @@ void KBot::ReadSensors()
 	m_mapAnalogSensors[knArmAngle] = m_pArmAngle->GetValue();
 	m_mapAnalogSensors[knTubeIR] = m_pTubeIR->GetValue();
 	
-	ADXL345_I2C::AllAxes accelerations = m_pAccelerometer->GetAccelerations();
-	m_mapAnalogSensors[knAccelerationX] = accelerations.XAxis;
-	m_mapAnalogSensors[knAccelerationY] = accelerations.YAxis;
-	m_mapAnalogSensors[knAccelerationZ] = accelerations.ZAxis;
+	//ADXL345_I2C::AllAxes accelerations = m_pAccelerometer->GetAccelerations();
+	//m_mapAnalogSensors[knAccelerationX] = accelerations.XAxis;
+	//m_mapAnalogSensors[knAccelerationY] = accelerations.YAxis;
+	//m_mapAnalogSensors[knAccelerationZ] = accelerations.ZAxis;
 
 	//*********DIGITAL SENSORS************
 	
@@ -447,17 +470,28 @@ void KBot::ComputeActuators(Controller* pController)
 {
 	ComputeControllerXYR(pController);
 	ComputeGyroXYR();
-	ComputeArm(pController);
+	ComputeArmAndDeployer(pController);
 }
 
 /*!
 Compute all the arm functions from the controller values
 */
-void KBot::ComputeArm(Controller *pController)
+void KBot::ComputeArmAndDeployer(Controller *pController)
 {
+	if (pController->GetButton(knDeployerOut))
+	{
+		// TODO: NEED TO PUT ARM UP!!!
+		m_nDeployerPosition = 1;
+	}
+	else if (pController->GetButton(knDeployerIn))
+	{
+		// TODO: NEED TO PUT ARM UP!!!
+		m_nDeployerPosition = 0;
+	}
+		
 	if (pController->GetButton(knArmParked))
 	{
-		m_fTargetArmAngle = 0;
+		m_fTargetArmAngle = 0.30f;
 		m_nWristPosition = 0;
 		m_fLowerJawRollerSpeed = 0.0;
 		m_fUpperJawRollerSpeed = 0.0;
@@ -472,20 +506,37 @@ void KBot::ComputeArm(Controller *pController)
 		{
 			m_nWristPosition = 1;
 		}
-		if (pController->GetButton(knArmHigh))
+		if (pController->GetButton(knJawOpen))
 		{
-			m_fTargetArmAngle = 1500.0f;
+			m_nJawPosition = 1;
 		}
-		else if (pController->GetButton(knArmMiddle))
+		else if (pController->GetButton(knJawClosed))
 		{
-			m_fTargetArmAngle = 600.0f;
+			m_nJawPosition = 0;
 		}
-		if (pController->GetButton(knArmLow))
+		if (pController->GetButton(knArmHigh))//4
 		{
-			m_fTargetArmAngle = 300.0f;
+			m_fTargetArmAngle = 0.7f;
+		}
+		else if (pController->GetButton(knArmMiddle))//3
+		{
+			m_fTargetArmAngle = 0.55f;
+		}
+		else if (pController->GetButton(knArmLow))//2
+		{
+			m_fTargetArmAngle = 0.4f;
+		}
+		else
+		{
+			//stays in previous position?
 		}
 		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
-		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);		
+		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);
+		if ((m_mapDigitalSensors[knTubeRight] == 0) || (m_mapDigitalSensors[knTubeLeft] == 0))
+		{
+			m_fLowerJawRollerSpeed = -3.0;
+			m_fUpperJawRollerSpeed = 3.0;
+		}
 	}
 }
 /*!
@@ -554,17 +605,44 @@ void KBot::UpdateMotors()
 
 void KBot::UpdateWrist()
 {
-	
+	if (m_nWristPosition == 0)	// wrist IN
+	{
+		m_pWristInSolenoid->Set(true);
+		m_pWristOutSolenoid->Set(false);
+	}
+	else	// wrist OUT
+	{
+		m_pWristInSolenoid->Set(false);
+		m_pWristOutSolenoid->Set(true);		
+	}
 }
 
 void KBot::UpdateJaw()
 {
-	
+	if (m_nJawPosition == 0)	// Jaw CLOSED
+	{
+		m_pJawClosedSolenoid->Set(true);
+		m_pJawOpenSolenoid->Set(false);		
+	}
+	else	// Jaw OPEN
+	{
+		m_pJawClosedSolenoid->Set(false);
+		m_pJawOpenSolenoid->Set(true);				
+	}
 }
 
 void KBot::UpdateDeployer()
 {
-	
+	if (m_nDeployerPosition == 0)	// Deployer IN
+	{
+		m_pDeployerInSolenoid->Set(true);
+		m_pDeployerOutSolenoid->Set(false);		
+	}
+	else	// Deployer OUT
+	{
+		m_pDeployerInSolenoid->Set(false);
+		m_pDeployerOutSolenoid->Set(true);		
+	}
 }
 
 void KBot::UpdateActuators()

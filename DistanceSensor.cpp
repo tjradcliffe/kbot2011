@@ -12,8 +12,8 @@
 #include "Math.h"
 #include "WPIStatus.h"
 
-const UINT32 DistanceSensor::kOversampleBits = 10;
-const UINT32 DistanceSensor::kAverageBits = 5;
+const UINT32 DistanceSensor::kOversampleBits = 0;
+const UINT32 DistanceSensor::kAverageBits = 0;
 const float DistanceSensor::kSamplesPerSecond = 50.0;
 const float DistanceSensor::kAIRRSExponent = -0.9891; // check
 const float DistanceSensor::kAIRRSMultiplier = 57.653;// check

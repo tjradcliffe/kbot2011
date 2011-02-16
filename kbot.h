@@ -96,8 +96,8 @@ protected:
 	// Compute gyro inputs and weight
 	void ComputeGyroXYR();
 	
-	// Compute the arm actuator outputs
-	void ComputeArm(Controller* pController);
+	// Compute the arm and deployer actuator outputs
+	void ComputeArmAndDeployer(Controller* pController);
 	
 	//! Compute the weight given each of the inputs
 	void ComputeWeights(Controller* pController);
@@ -225,7 +225,7 @@ private:
 	DigitalInput* m_pRecordSwitch;
 
 	// accelerometer
-	ADXL345_I2C* m_pAccelerometer;
+	//ADXL345_I2C* m_pAccelerometer;
 	
 }; // class declaration
 
