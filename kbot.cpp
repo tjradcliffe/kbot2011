@@ -174,6 +174,10 @@ void KBot::RobotInit()
 	// PID controllers
 	// Arm:
 	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+	
+	// First 3 parameters are P, I, D for positive voltage (up), next 3 are P, I, D for negative (down)
+	m_pArmPID->setAsymmetricPID(0.02, 0.01, 0.0,  0.01, 0.005, 0.0);
+	
 	m_pArmPID->setDesiredValue(845.0);
 	m_pArmPID->setErrorEpsilon(10.0);
 	m_pArmPID->setMaxOutput(1.0); // Max range
