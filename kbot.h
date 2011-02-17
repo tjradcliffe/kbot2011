@@ -8,7 +8,7 @@
 #include "Gyro.h"
 #include "WPILib.h"
 
-// Standard includes (old-style x.h files => cx files)
+// Standard includes old-style x.h files => cx files)
 #include <map>
 #include <cmath>
 
@@ -18,6 +18,7 @@ class Controller;
 class I2C_Ultrasound;
 class DistanceSensor;
 class TeleopController;
+class KbotPID;
 
 /*!
 The main robot class.  This is where almost all of the work gets
@@ -151,6 +152,8 @@ private:
 	//! arm angle and speed we want
 	float m_fTargetArmAngle;
 	float m_fArmSpeed;
+	
+	KbotPID *m_pArmPID;
 	
 	//! wrist position we want (0 == in, 1 == out)
 	int m_nWristPosition;

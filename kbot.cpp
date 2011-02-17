@@ -7,6 +7,7 @@
 #include "DistanceSensor.h"
 #include "I2C_Ultrasound.h"
 #include "teleop_controller.h"
+#include "KbotPID.h"
 
 // FRC includes
 #include "I2C.h"
@@ -26,15 +27,14 @@ KBot::KBot(void)
 	std::cerr << "Periodic rate ="<< IterativeRobot::GetLoopsPerSec() << " loops per second." << std::endl;
 	
 	// Create a robot using standard right/left robot drive on PWMS 1, 2, 3, and #4
-	m_pLeftFrontJaguar = new CANJaguar(knLeftFrontJaguar, CANJaguar::kSpeed);
-	m_pLeftFrontJaguar->Set(0.0f);
-	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, CANJaguar::kSpeed);
-	m_pLeftBackJaguar->Set(0.0f);
-
 	m_pRightFrontJaguar = new CANJaguar(knRightFrontJaguar, CANJaguar::kSpeed);
 	m_pRightFrontJaguar->Set(0.0f);
+	m_pLeftFrontJaguar = new CANJaguar(knLeftFrontJaguar, CANJaguar::kSpeed);
+	m_pLeftFrontJaguar->Set(0.0f);
 	m_pRightBackJaguar = new CANJaguar(knRightBackJaguar, CANJaguar::kSpeed);
 	m_pRightBackJaguar->Set(0.0f);
+	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, CANJaguar::kSpeed);
+	m_pLeftBackJaguar->Set(0.0f);
 	
 	// Arm actuators
 	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kVoltage);
@@ -162,9 +162,23 @@ void KBot::RobotInit()
 	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
 	//m_pArmJaguar->SetPID(1100.0, 50.0, 500.0);  // d=500.0 as suggested in forums
-	m_pArmJaguar->SetPID(1.0, 0.0, 0.0);
+	//m_pArmJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pLowerRollerJaguar->SetPID(1.0, 0.0, 0.0);
 	m_pUpperRollerJaguar->SetPID(1.0, 0.0, 0.0);
+	
+	/////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////
+	
+	// PID controllers
+	// Arm:
+	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+	m_pArmPID->setDesiredValue(845.0);
+	m_pArmPID->setErrorEpsilon(10.0);
+	m_pArmPID->setMaxOutput(1.0); // Max range
+	m_pArmPID->setMinOutput(-1.0); // Max range
+	m_pArmPID->setDeadBand(0.2); // about +=2.4V
 	
 	m_pLeftFrontJaguar->ConfigEncoderCodesPerRev(360);
 	m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
@@ -191,6 +205,7 @@ void KBot::RobotInit()
 	m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
 	
 	m_pGyro->Reset();
+	m_pGyro->SetSensitivity(0.007); // 7 mV/deg/s
 	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
 	
 	m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
@@ -524,7 +539,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		
 	if (pController->GetButton(knArmParked))
 	{
-		m_fTargetArmAngle = 0.30f;
+		m_fTargetArmAngle = 845.0f;
 		m_nWristPosition = 0;
 		m_fLowerJawRollerSpeed = 0.0;
 		m_fUpperJawRollerSpeed = 0.0;
@@ -550,6 +565,9 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		if (pController->GetButton(knArmHigh))//4
 		{
 			m_fTargetArmAngle = 495.0f;
+			
+			// TODO: if new setpoint below old setpoint, change PID values
+			
 		}
 		else if (pController->GetButton(knArmMiddle))//3
 		{
@@ -560,7 +578,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 			m_fTargetArmAngle = 845.0f;
 		}
 		
-		float fArmControl = pController->GetAxis(knArmUpDown);
+		/*float fArmControl = pController->GetAxis(knArmUpDown);
 		bool bAngleControl = false;
 		if (fabs(fArmControl) > 0.05)	// controller over-ride
 		{
@@ -573,7 +591,8 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		else	// angle-drive
 		{
 			bAngleControl = true;
-			float fArmAngleDifference = m_fTargetArmAngle-m_mapAnalogSensors[knArmAngle];
+			float fArmAngleDifference = m_fTargetArmAngle-fArmAngleDifference;
+
 			m_fArmSpeed = fArmAngleDifference/10;
 			if (m_fArmSpeed > 10)
 			{
@@ -587,10 +606,13 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 			{
 				m_fArmSpeed = 0.0f;
 			}
-		}
+
+		}*/
+		m_pArmPID->setDesiredValue(m_fTargetArmAngle);
+		m_fArmSpeed = 12*m_pArmPID->calcPID(m_mapAnalogSensors[knArmAngle]);
 		
 		// only allow motor to move back into range, positive or negative
-		if (bAngleControl)
+/*		if (bAngleControl)
 		{
 			if ((m_mapAnalogSensors[knArmAngle] > kfArmAngleMax) && (m_fArmSpeed > 0))
 			{
@@ -600,7 +622,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 			{
 				m_fArmSpeed = 0;
 			}
-		}
+		}*/
 		
 		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
 		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);

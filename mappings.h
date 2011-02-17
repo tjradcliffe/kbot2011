@@ -102,8 +102,8 @@ enum WristJawStates
 {
 	knWristIn = knButtons+4,
 	knWristOut = knButtons+6,
-	knJawOpen = knButtons+5,
-	knJawClosed = knButtons+7,
+	knJawClosed = knButtons+5,
+	knJawOpen = knButtons+7,
 };
 
 //! Minibot deployer states
