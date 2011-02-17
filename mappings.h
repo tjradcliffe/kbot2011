@@ -10,8 +10,51 @@ const int knAxes = 5;
 /*
 NOTE: Xbox controller must be on USB 2
       Logitech controller must be on USB 1
-      
-XBOX 
+     
+_BUTTONS:
+_XBOX   CODE
+_A 		0
+_B		1
+_X		2
+_Y		3
+_LB		4
+_RB		5
+_LSTICK	8
+_RSTICK	9
+
+LOGI    CODE
+_1		10
+_2		11
+_3		12
+_4		13
+_5		14
+_6		15
+_7		16
+_8		17
+_9		18
+_10		19
+NO BUTTONS ON STICK PRESS
+
+AXES
+
+XBOX    CODE
+LEFT->  +0
+LEFT^   -1
+RIGHT-> +3
+RIGHT^  -4
+LEFTSQUEEZE +2
+RIGHTSQUEEZE -2
+
+CANNOT SEE CROSS
+
+LOGITECH  CODE
+LEFT->  	+5
+LEFT^   	-6
+RIGHT-> 	+7
+RIGHT^  	-8
+CROSS-> 	+9
+
+NOTE: ^ means pushing the button AWAY from you
 */
 
 //! Various button indices (most in enums)
@@ -24,8 +67,8 @@ const int knDeployerOutButton = 7;
 const int knX = 0;
 const int knY = 1;
 const int knR = 2;
-const int knRollAround = 7;
-const int knRollInOut = 8;
+const int knRollAround = 8;
+const int knRollInOut = 7;
 const int knArmUpDown = 6;
 
 // The cRIO slots for various interfaces

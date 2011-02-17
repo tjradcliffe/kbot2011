@@ -359,7 +359,7 @@ void KBot::TeleopPeriodic(void)
 	{
 		nCount = 0;
 		//std::cerr << m_pArmJaguar->GetPosition() << " <-- " << m_pArmJaguar->Get() << " <-- " << m_mapAnalogSensors[knArmAngle] <<std::endl; 
-		std::cerr << m_mapAnalogSensors[knArmAngle] << std::endl;
+		std::cerr << m_fTargetArmAngle << " " << m_mapAnalogSensors[knArmAngle] << " " << m_fArmSpeed << std::endl;
 	}
 	++nCount;
 }
@@ -561,14 +561,28 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		}
 		
 		float fArmControl = pController->GetAxis(knArmUpDown);
+		bool bAngleControl = false;
 		if (fabs(fArmControl) > 0.05)	// controller over-ride
 		{
 			m_fArmSpeed = 10*fArmControl;
+			
+			// This is necessary so that the arm will think it is at
+			// the "right" angle wherever it winds up
+			m_fTargetArmAngle = m_mapAnalogSensors[knArmAngle];
 		}
 		else	// angle-drive
 		{
+			bAngleControl = true;
 			float fArmAngleDifference = m_fTargetArmAngle-m_mapAnalogSensors[knArmAngle];
-			m_fArmSpeed = 10*fArmAngleDifference/1000;
+			m_fArmSpeed = fArmAngleDifference/10;
+			if (m_fArmSpeed > 10)
+			{
+				m_fArmSpeed = 10;
+			}
+			else if (m_fArmSpeed < -10)
+			{
+				m_fArmSpeed = -10;
+			}
 			if ((fabs(m_fArmSpeed) < 0.5f) && (fabs(fArmAngleDifference) < 2))
 			{
 				m_fArmSpeed = 0.0f;
@@ -576,21 +590,24 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		}
 		
 		// only allow motor to move back into range, positive or negative
-		if ((m_mapAnalogSensors[knArmAngle] > kfArmAngleMax) && (m_fArmSpeed > 0))
+		if (bAngleControl)
 		{
-			m_fArmSpeed = 0;
-		}
-		if ((m_mapAnalogSensors[knArmAngle] < kfArmAngleMin) && (m_fArmSpeed < 0))
-		{
-			m_fArmSpeed = 0;
+			if ((m_mapAnalogSensors[knArmAngle] > kfArmAngleMax) && (m_fArmSpeed > 0))
+			{
+				m_fArmSpeed = 0;
+			}
+			if ((m_mapAnalogSensors[knArmAngle] < kfArmAngleMin) && (m_fArmSpeed < 0))
+			{
+				m_fArmSpeed = 0;
+			}
 		}
 		
 		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
 		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);
 		if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
 		{
-			m_fLowerJawRollerSpeed = -3.0;
-			m_fUpperJawRollerSpeed = 3.0;
+			m_fLowerJawRollerSpeed = -1.5;
+			m_fUpperJawRollerSpeed = 1.5;
 		}
 	}
 }
