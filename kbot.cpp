@@ -42,6 +42,9 @@ KBot::KBot(void)
 	m_pLowerRollerJaguar = new CANJaguar(knLowerRollerJaguar, CANJaguar::kVoltage);
 	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
 	
+	// Arm PID controller:
+	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
 	//m_pArmAngle->SetAverageBits(0); //kAverageBits);
@@ -141,7 +144,7 @@ void KBot::ResetRobot(bool bRecordTeleop)
 
 /*!
 This is the initialization code that gets called when the robot
-is created.  Currently it just calls ResetRobot()
+is created. 
 */
 void KBot::RobotInit()
 {
@@ -171,13 +174,9 @@ void KBot::RobotInit()
 	////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////
 	
-	// PID controllers
-	// Arm:
-	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
-	
+	// Arm PID controller:
 	// First 3 parameters are P, I, D for positive voltage (up), next 3 are P, I, D for negative (down)
 	m_pArmPID->setAsymmetricPID(0.02, 0.01, 0.0,  0.01, 0.005, 0.0);
-	
 	m_pArmPID->setDesiredValue(845.0);
 	m_pArmPID->setErrorEpsilon(10.0);
 	m_pArmPID->setMaxOutput(1.0); // Max range
@@ -241,6 +240,9 @@ Called at start of disabled
 void KBot::DisabledInit() 
 {
 	// do NOT reset robot here!
+	delete m_pArmPID; // Force save of data file
+	m_pArmPID = 0;
+
 	GetWatchdog().SetEnabled(false);
 	m_pLeftFrontJaguar->SetSafetyEnabled(false);
 	m_pLeftBackJaguar->SetSafetyEnabled(false);
@@ -256,6 +258,9 @@ Called at start of autonomous
 */
 void KBot::AutonomousInit() 
 {
+	delete m_pArmPID; // Force save of data file and re-create
+	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+
 	m_pLeftFrontJaguar->SetSafetyEnabled(true);
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
 	m_pRightFrontJaguar->SetSafetyEnabled(true);
@@ -272,6 +277,9 @@ here, so a full reset may not be what we need.
 */
 void KBot::TeleopInit() 
 {
+	delete m_pArmPID; // Force save of data file and re-create
+	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+
 	m_pLeftFrontJaguar->SetSafetyEnabled(true);
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
 	m_pRightFrontJaguar->SetSafetyEnabled(true);
@@ -298,7 +306,7 @@ void KBot::DisabledPeriodic(void)
 		nCount = 0;
 	
 //#define CONTROLLER_DEBUG
-//#define ANALOG_DEBUG
+#define ANALOG_DEBUG
 //#define DIGITAL_DEBUG
 #ifdef CONTROLLER_DEBUG
 		m_pTeleopController->Update();
@@ -562,7 +570,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		{
 			m_nJawPosition = 1;
 		}
-		else if (pController->GetButton(knJawClosed))
+		else
 		{
 			m_nJawPosition = 0;
 		}
