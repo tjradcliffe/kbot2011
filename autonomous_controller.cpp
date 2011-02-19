@@ -43,10 +43,6 @@ void AutonomousController::Update()
 		}
 	}
 	
-	if (nTimeCount != m_nTimeCount)
-	{
-		std::cerr << nTimeCount << " " << m_nTimeCount << std::endl;
-	}
 	++m_nTimeCount;
 	
 }

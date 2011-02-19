@@ -46,6 +46,12 @@ public:
 	float GetAxis(int nAxisIndex) {return m_vecAxes[nAxisIndex];}
 	//@}
 
+	//@{
+	//! Set the controller state out of the arrays
+	void SetButton(int nButtonIndex, bool bPressed) {m_vecButtons[nButtonIndex] = bPressed?1:0;}
+	void SetAxis(int nAxisIndex, float fValue) {m_vecAxes[nAxisIndex]=fValue;}
+	//@}
+	
 	//! get all buttons
 	std::vector<int> GetButtons() {return m_vecButtons;}
 	

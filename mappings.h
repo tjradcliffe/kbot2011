@@ -66,6 +66,8 @@ const int knLineFollowButton = 4;	// Right front button
 const int knStrafeWallButton = 5;	// Left front button
 const int knDeployerOutButton = 7;	// Right little button
 
+const int knAutoScoreAxis = 9;	// Left D-button on Logitech
+
 //! Axis mappings
 const int knX = 0;
 const int knY = 1;
@@ -124,6 +126,7 @@ enum LightState
 	knRedLightRelay = 3,
 	knWhiteLightRelay = 4,
 	knAllLightsOn = 5,
+	knTubeCaptureSignal = 6,
 };
 
 //! The solenoid ids

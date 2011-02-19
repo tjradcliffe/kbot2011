@@ -199,10 +199,10 @@ void KBot::RobotInit()
 	// First 3 parameters are positive dir (down on our robot), next 3 are negative (up)
 	m_pArmPID->setAsymmetricPID(k_posP, k_posI, k_posD,  k_negP, k_negI, k_negD);
 	m_pArmPID->setDesiredValue(845.0);
-	m_pArmPID->setErrorEpsilon(10.0);
+	m_pArmPID->setErrorEpsilon(20.0);  // was 10.0 and working quite well
 	m_pArmPID->setMaxOutput(1.0); // Max range
 	m_pArmPID->setMinOutput(-1.0); // Max range
-	m_pArmPID->setDeadBand(0.2); // about +=2.4V
+	m_pArmPID->setDeadBand(0.4); // about +=2.4V
 	
 	m_pLeftFrontJaguar->ConfigEncoderCodesPerRev(360);
 	m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
@@ -214,7 +214,7 @@ void KBot::RobotInit()
 	m_pLeftBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pRightFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pRightBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pArmJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pArmJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
 	m_pLowerRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 	m_pUpperRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 			
@@ -547,6 +547,10 @@ void KBot::ComputeLights(Controller* pController)
 	{
 		m_nLightState = knAllLightsOn;
 	}
+	else if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
+	{
+		m_nLightState = knTubeCaptureSignal;
+	}	
 	else
 	{
 		m_nLightState = knAllLightsOff;
@@ -616,6 +620,30 @@ Compute all the arm functions from the controller values
 */
 void KBot::ComputeArmAndDeployer(Controller *pController)
 {
+	static int nAutoScoreCount = 0;	// local static for autoscore
+	if (pController->GetAxis(knAutoScoreAxis) < -0.8f)
+	{
+		if (nAutoScoreCount < 10) // 0.2 s
+		{
+			// starting with roll-out
+			pController->SetAxis(knRollInOut, 1.0f);
+		}
+		else if (nAutoScoreCount < 30)
+		{
+			pController->SetButton(knJawOpen, true);
+			pController->SetAxis(knArmUpDown, 1.0f);			
+		}
+		else if (nAutoScoreCount < 50)
+		{
+			pController->SetAxis(knArmUpDown, 1.0f);						
+		}
+		++nAutoScoreCount;
+	}
+	else
+	{
+		nAutoScoreCount = 0; // reset the counter for next go
+	}
+	
 	if (pController->GetButton(knDeployerOutButton))
 	{
 		// TODO: NEED TO PUT ARM UP!!!
@@ -856,6 +884,12 @@ void KBot::UpdateLights()
 		m_pRedLightRelay->Set(Relay::kForward);
 		m_pBlueLightRelay->Set(Relay::kForward);
 		m_pWhiteLightRelay->Set(Relay::kForward);
+	}
+	else if (m_nLightState == knTubeCaptureSignal)
+	{
+		m_pRedLightRelay->Set(Relay::kForward);
+		m_pBlueLightRelay->Set(Relay::kForward);
+		m_pWhiteLightRelay->Set(Relay::kOff);		
 	}
 }
 
