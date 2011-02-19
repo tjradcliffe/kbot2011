@@ -17,6 +17,17 @@
 
 const int KBot::kPeriodicSpeed = 50; // Speed of periodic loops in Hz
 
+// PID parameters for asymmetric PID:
+const float KBot::k_posP =0.015;  // pos values = DOWN on our robot
+const float KBot::k_posI =0.04;
+const float KBot::k_posD =0.025;
+const float KBot::k_negP =0.1;	// neg values = UP on our robot
+const float KBot::k_negI =0.1;
+const float KBot::k_negD =0.5;
+
+
+double wheelSpeeds[4];  // signs changed to get rotation right
+
 /*!
 The constructor builds everything
 */
@@ -43,7 +54,7 @@ KBot::KBot(void)
 	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
 	
 	// Arm PID controller:
-	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+	m_pArmPID = new KbotPID(k_posP, 0.01, 0.0);
 
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
@@ -63,6 +74,12 @@ KBot::KBot(void)
 	m_pDeployerOutSolenoid = new Solenoid(knRelaySlot, knDeployerOutSolenoid);
 	m_pDeployerInSolenoid = new Solenoid(knRelaySlot, knDeployerInSolenoid);
 	
+	// Light relays
+	m_pBlueLightRelay = new Relay(knBlueLightRelay, Relay::kForwardOnly);
+	m_pRedLightRelay = new Relay(knRedLightRelay, Relay::kForwardOnly);
+	m_pWhiteLightRelay = new Relay(knWhiteLightRelay, Relay::kForwardOnly);
+	m_nLightState = knAllLightsOff;
+
 	// Compressor controls
 	m_pCompressorRelay = new Relay(knCompressorRelay,Relay::kForwardOnly);
 	m_pCompressorLimit = new DigitalInput(knCompressorLimit);
@@ -130,6 +147,10 @@ void KBot::ResetRobot(bool bRecordTeleop)
 	m_fGyroSetPoint = m_pGyro->GetAngle();
 	
 	m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
+
+	m_pBlueLightRelay->Set(Relay::kOff);
+	m_pRedLightRelay->Set(Relay::kOff);
+	m_pWhiteLightRelay->Set(Relay::kOff);
 	
 	if (bRecordTeleop)
 	{
@@ -175,8 +196,8 @@ void KBot::RobotInit()
 	/////////////////////////////////////////////////////////////////
 	
 	// Arm PID controller:
-	// First 3 parameters are P, I, D for positive voltage (up), next 3 are P, I, D for negative (down)
-	m_pArmPID->setAsymmetricPID(0.02, 0.01, 0.0,  0.01, 0.005, 0.0);
+	// First 3 parameters are positive dir (down on our robot), next 3 are negative (up)
+	m_pArmPID->setAsymmetricPID(k_posP, k_posI, k_posD,  k_negP, k_negI, k_negD);
 	m_pArmPID->setDesiredValue(845.0);
 	m_pArmPID->setErrorEpsilon(10.0);
 	m_pArmPID->setMaxOutput(1.0); // Max range
@@ -259,7 +280,8 @@ Called at start of autonomous
 void KBot::AutonomousInit() 
 {
 	delete m_pArmPID; // Force save of data file and re-create
-	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+	m_pArmPID = new KbotPID(0.0, 0.0, 0.0);
+	m_pArmPID->setAsymmetricPID(k_posP, k_posI, k_posD,  k_negP, k_negI, k_negD);
 
 	m_pLeftFrontJaguar->SetSafetyEnabled(true);
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
@@ -278,7 +300,8 @@ here, so a full reset may not be what we need.
 void KBot::TeleopInit() 
 {
 	delete m_pArmPID; // Force save of data file and re-create
-	m_pArmPID = new KbotPID(0.02, 0.01, 0.0);
+	m_pArmPID = new KbotPID(0.0, 0.0, 0.0);
+	m_pArmPID->setAsymmetricPID(k_posP, k_posI, k_posD,  k_negP, k_negI, k_negD);
 
 	m_pLeftFrontJaguar->SetSafetyEnabled(true);
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
@@ -306,7 +329,7 @@ void KBot::DisabledPeriodic(void)
 		nCount = 0;
 	
 //#define CONTROLLER_DEBUG
-#define ANALOG_DEBUG
+//#define ANALOG_DEBUG
 //#define DIGITAL_DEBUG
 #ifdef CONTROLLER_DEBUG
 		m_pTeleopController->Update();
@@ -386,7 +409,8 @@ void KBot::TeleopPeriodic(void)
 	{
 		nCount = 0;
 		//std::cerr << m_pArmJaguar->GetPosition() << " <-- " << m_pArmJaguar->Get() << " <-- " << m_mapAnalogSensors[knArmAngle] <<std::endl; 
-		std::cerr << m_fTargetArmAngle << " " << m_mapAnalogSensors[knArmAngle] << " " << m_fArmSpeed << std::endl;
+		//std::cerr << wheelSpeeds[0] << "  " << wheelSpeeds[1] << "  " << "  " << wheelSpeeds[2] << "  " << wheelSpeeds[3] <<std::endl;
+		//std::cerr << m_pLeftFrontJaguar->GetOutputVoltage() << "  " << m_pRightFrontJaguar->GetOutputVoltage() << "  " <<m_pLeftBackJaguar->GetOutputVoltage() << "  " <<m_pRightBackJaguar->GetOutputVoltage() << "  " <<std::endl;
 	}
 	++nCount;
 }
@@ -493,6 +517,30 @@ void KBot::ReadSensors()
 	
 }
 
+void KBot::ComputeLights(Controller* pController)
+{
+	if (pController->GetButton(knRedTubeButton))
+	{
+		m_nLightState = knRedLightRelay;
+	}
+	else if (pController->GetButton(knBlueTubeButton))
+	{
+		m_nLightState = knBlueLightRelay;
+	}
+	else if (pController->GetButton(knWhiteTubeButton))
+	{
+		m_nLightState = knWhiteLightRelay;
+	}
+	else if (pController->GetButton(knAllLightsButton))
+	{
+		m_nLightState = knAllLightsOn;
+	}
+	else
+	{
+		m_nLightState = knAllLightsOff;
+	}
+}
+
 /*!
 Compute the XYR for the controller.  If we have a program
 button for "move-to-wall", say, this is where it will be
@@ -508,9 +556,11 @@ void KBot::ComputeControllerXYR(Controller* pController)
 	{
 		// implement move-to-wall logic based on sensors here
 	}
-	else if (pController->GetButton(knStrafeButton))
+	else if (pController->GetButton(knStrafeButton))  //fabs(pController->GetAxis(knZ)) > 0.05)		//pController->GetButton(knStrafeButton))
 	{
 		// implement strafing logic here
+		//KEVIN:m_mapX[knStrafeInput] = pController->GetAxis(knZ);
+		//m_mapR[knStrafeInput] = k_IRTurnGain*(m_mapAnalogSensors[knLeftIR]-m_mapAnalogSensors[knRightIR]+kIRoffset);
 	}
 }
 
@@ -531,6 +581,7 @@ void KBot::ComputeActuators(Controller* pController)
 	ComputeControllerXYR(pController);
 	ComputeGyroXYR();
 	ComputeArmAndDeployer(pController);
+	ComputeLights(pController);
 }
 
 /*!
@@ -538,12 +589,12 @@ Compute all the arm functions from the controller values
 */
 void KBot::ComputeArmAndDeployer(Controller *pController)
 {
-	if (pController->GetButton(knDeployerOut))
+	if (pController->GetButton(knDeployerOutButton))
 	{
 		// TODO: NEED TO PUT ARM UP!!!
 		m_nDeployerPosition = 1;
 	}
-	else if (pController->GetButton(knDeployerIn))
+	else
 	{
 		// TODO: NEED TO PUT ARM UP!!!
 		m_nDeployerPosition = 0;
@@ -574,6 +625,8 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		{
 			m_nJawPosition = 0;
 		}
+		
+		// respond to pre-set arm position buttons
 		if (pController->GetButton(knArmHigh))//4
 		{
 			m_fTargetArmAngle = 495.0f;
@@ -590,58 +643,28 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 			m_fTargetArmAngle = 845.0f;
 		}
 		
-		/*float fArmControl = pController->GetAxis(knArmUpDown);
-		bool bAngleControl = false;
+		// give the joystick the opportunity to over-ride
+		float fArmControl = pController->GetAxis(knArmUpDown);
 		if (fabs(fArmControl) > 0.05)	// controller over-ride
 		{
-			m_fArmSpeed = 10*fArmControl;
+			m_fArmSpeed = 12*fArmControl;
 			
 			// This is necessary so that the arm will think it is at
 			// the "right" angle wherever it winds up
 			m_fTargetArmAngle = m_mapAnalogSensors[knArmAngle];
 		}
-		else	// angle-drive
+		else	// no joystick signal, let PID do its thing
 		{
-			bAngleControl = true;
-			float fArmAngleDifference = m_fTargetArmAngle-fArmAngleDifference;
+			m_pArmPID->setDesiredValue(m_fTargetArmAngle);
+			m_fArmSpeed = 12*m_pArmPID->calcPID(m_mapAnalogSensors[knArmAngle]);			
+		}
 
-			m_fArmSpeed = fArmAngleDifference/10;
-			if (m_fArmSpeed > 10)
-			{
-				m_fArmSpeed = 10;
-			}
-			else if (m_fArmSpeed < -10)
-			{
-				m_fArmSpeed = -10;
-			}
-			if ((fabs(m_fArmSpeed) < 0.5f) && (fabs(fArmAngleDifference) < 2))
-			{
-				m_fArmSpeed = 0.0f;
-			}
-
-		}*/
-		m_pArmPID->setDesiredValue(m_fTargetArmAngle);
-		m_fArmSpeed = 12*m_pArmPID->calcPID(m_mapAnalogSensors[knArmAngle]);
-		
-		// only allow motor to move back into range, positive or negative
-/*		if (bAngleControl)
-		{
-			if ((m_mapAnalogSensors[knArmAngle] > kfArmAngleMax) && (m_fArmSpeed > 0))
-			{
-				m_fArmSpeed = 0;
-			}
-			if ((m_mapAnalogSensors[knArmAngle] < kfArmAngleMin) && (m_fArmSpeed < 0))
-			{
-				m_fArmSpeed = 0;
-			}
-		}*/
-		
 		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
 		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);
 		if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
 		{
-			m_fLowerJawRollerSpeed = -1.5;
-			m_fUpperJawRollerSpeed = 1.5;
+			m_fLowerJawRollerSpeed = (m_mapAnalogSensors[knTubeIR]-300.0)/200.0;
+			m_fUpperJawRollerSpeed = -m_fLowerJawRollerSpeed;
 		}
 	}
 }
@@ -696,20 +719,20 @@ void KBot::UpdateMotors()
 		fR += m_mapWeightR[nIndex]*m_mapR[nIndex];
 	}
 	
-	double wheelSpeeds[4];  // signs changed to get rotation right
+	//double wheelSpeeds[4];  // signs changed to get rotation right
 	wheelSpeeds[0] = -fX + fY - fR;
-	wheelSpeeds[1] = -fX + fY + fR;
-	wheelSpeeds[2] = fX + fY + fR;
+	wheelSpeeds[1] = fX + fY + fR;
+	wheelSpeeds[2] = -fX + fY + fR;
 	wheelSpeeds[3] = fX + fY - fR;
 	
 	DeadbandNormalize(wheelSpeeds);
 
 	// actually set speeds (negate right side due to motor mounting)
 	UINT8 syncGroup = 0x80;	
-	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*100.0 , syncGroup);
-	m_pRightFrontJaguar->Set(-wheelSpeeds[1]*100.0 , syncGroup);
-	m_pRightBackJaguar->Set(-wheelSpeeds[2]*100.0, syncGroup);
-	m_pLeftBackJaguar->Set(wheelSpeeds[3]*100.0 , syncGroup);
+	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*150.0 , syncGroup);
+	m_pRightFrontJaguar->Set(-wheelSpeeds[1]*150.0 , syncGroup);
+	m_pRightBackJaguar->Set(-wheelSpeeds[2]*150.0, syncGroup);
+	m_pLeftBackJaguar->Set(wheelSpeeds[3]*150.0 , syncGroup);
 	m_pLowerRollerJaguar->Set(10*m_fLowerJawRollerSpeed , syncGroup);
 	m_pUpperRollerJaguar->Set(10*m_fUpperJawRollerSpeed , syncGroup);
 	m_pArmJaguar->Set(m_fArmSpeed, syncGroup);
@@ -764,6 +787,41 @@ void KBot::UpdateActuators()
 	UpdateWrist();
 	UpdateJaw();
 	UpdateDeployer();
+	UpdateLights();
+}
+
+void KBot::UpdateLights()
+{
+	if (knAllLightsOff == m_nLightState)
+	{
+		m_pRedLightRelay->Set(Relay::kOff);
+		m_pBlueLightRelay->Set(Relay::kOff);
+		m_pWhiteLightRelay->Set(Relay::kOff);
+	}
+	else if (knRedLightRelay == m_nLightState)
+	{
+		m_pRedLightRelay->Set(Relay::kForward);
+		m_pBlueLightRelay->Set(Relay::kOff);
+		m_pWhiteLightRelay->Set(Relay::kOff);
+	}
+	else if (knBlueLightRelay == m_nLightState)
+	{
+		m_pRedLightRelay->Set(Relay::kOff);
+		m_pBlueLightRelay->Set(Relay::kForward);
+		m_pWhiteLightRelay->Set(Relay::kOff);
+	}
+	else if (knWhiteLightRelay == m_nLightState)
+	{
+		m_pRedLightRelay->Set(Relay::kOff);
+		m_pBlueLightRelay->Set(Relay::kOff);
+		m_pWhiteLightRelay->Set(Relay::kForward);
+	}
+	else if (m_nLightState == knAllLightsOn)
+	{
+		m_pRedLightRelay->Set(Relay::kForward);
+		m_pBlueLightRelay->Set(Relay::kForward);
+		m_pWhiteLightRelay->Set(Relay::kForward);
+	}
 }
 
 /**

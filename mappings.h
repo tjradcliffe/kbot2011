@@ -58,10 +58,13 @@ NOTE: ^ means pushing the button AWAY from you
 */
 
 //! Various button indices (most in enums)
-const int knMoveToWallButton = 3;
-const int knStrafeButton = 4;
-const int knDeployerInButton = 6;
-const int knDeployerOutButton = 7;
+const int knAllLightsButton = 0;	// Green A Button
+const int knRedTubeButton = 1;		// Red B button
+const int knBlueTubeButton = 2;		// Blue X button
+const int knWhiteTubeButton = 3;	// Yellow Y button
+const int knMoveToWallButton = 4;	// Right front button
+const int knStrafeButton = 5;		// Left front button
+const int knDeployerOutButton = 7;	// Right little button
 
 //! Axis mappings
 const int knX = 0;
@@ -111,6 +114,16 @@ enum MiniBotStates
 {
 	knDeployerIn,
 	knDeployerOut,
+};
+
+//! Light states
+enum LightState
+{
+	knAllLightsOff,
+	knBlueLightRelay = 2,
+	knRedLightRelay = 3,
+	knWhiteLightRelay = 4,
+	knAllLightsOn = 5,
 };
 
 //! The solenoid ids

@@ -100,6 +100,9 @@ protected:
 	// Compute the arm and deployer actuator outputs
 	void ComputeArmAndDeployer(Controller* pController);
 	
+	// Compute the light states
+	void ComputeLights(Controller* pController);
+	
 	//! Compute the weight given each of the inputs
 	void ComputeWeights(Controller* pController);
 	
@@ -121,8 +124,19 @@ protected:
 	//! Update the driver station (extended IO)
 	void UpdateDriverStation();
 	
+	//! Update the light relays
+	void UpdateLights();
+	
 private:
 	static const int kPeriodicSpeed;
+	
+	// PID constants for asymmetric PID controller
+	static const float k_posP;
+	static const float k_posI;
+	static const float k_posD;
+	static const float k_negP;
+	static const float k_negI;
+	static const float k_negD;
 	
 	//! Estimated robot position, orienation and velocity
 	std::vector<float> m_vecPosition;
@@ -167,7 +181,13 @@ private:
 	//! jaw roller speeds
 	float m_fLowerJawRollerSpeed;
 	float m_fUpperJawRollerSpeed;
-	
+
+	// Light state
+	LightState m_nLightState;
+	Relay	*m_pBlueLightRelay;
+	Relay	*m_pRedLightRelay;
+	Relay	*m_pWhiteLightRelay;
+
 	///*************ACTUATORS******************
 	//! Motor controllers for body
 	CANJaguar *m_pLeftFrontJaguar;
@@ -227,7 +247,7 @@ private:
 	
 	// Teleop record mode switch
 	DigitalInput* m_pRecordSwitch;
-
+	
 	// accelerometer
 	//ADXL345_I2C* m_pAccelerometer;
 	
