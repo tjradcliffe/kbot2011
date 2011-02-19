@@ -29,10 +29,10 @@ void AutonomousController::Update()
 		pInStream = new std::ifstream(m_strInputFilename.c_str());
 	}
 	
+	int nTimeCount = 0;
 	if (!(pInStream->fail()))
 	{
-		int nTimeCount;
-		(*pInStream) >> nTimeCount; // not used 
+		(*pInStream) >> nTimeCount;
 		for (int nIndex = 0; nIndex < m_nStickNumber*m_nAxisNumber; ++nIndex)
 		{
 			(*pInStream) >> m_vecAxes[nIndex];
@@ -41,6 +41,11 @@ void AutonomousController::Update()
 		{
 			(*pInStream) >> m_vecButtons[nIndex];
 		}
+	}
+	
+	if (nTimeCount != m_nTimeCount)
+	{
+		std::cerr << nTimeCount << " " << m_nTimeCount << std::endl;
 	}
 	++m_nTimeCount;
 	

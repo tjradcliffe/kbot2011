@@ -6,6 +6,7 @@
 #include "constants.h"
 #include "DistanceSensor.h"
 #include "I2C_Ultrasound.h"
+#include "score_three_controller.h"
 #include "teleop_controller.h"
 #include "KbotPID.h"
 
@@ -24,9 +25,6 @@ const float KBot::k_posD =0.025;
 const float KBot::k_negP =0.1;	// neg values = UP on our robot
 const float KBot::k_negI =0.1;
 const float KBot::k_negD =0.5;
-
-
-double wheelSpeeds[4];  // signs changed to get rotation right
 
 /*!
 The constructor builds everything
@@ -85,8 +83,9 @@ KBot::KBot(void)
 	m_pCompressorLimit = new DigitalInput(knCompressorLimit);
 	
 	// controllers
-	m_pTeleopController = new TeleopController(""); //"test.dat");
-	m_pAutonomousController = new AutonomousController(this, "test.dat");
+	m_pTeleopController = new TeleopController("");
+	m_pPlaybackController = new AutonomousController(this, "score1.dat");
+	m_pScoreThreeController = new ScoreThreeController(this);
 	
 	// gyro
 	m_pGyro = new Gyro(knAnalogSlot, knGyro);
@@ -160,7 +159,8 @@ void KBot::ResetRobot(bool bRecordTeleop)
 	{
 		m_pTeleopController->Done();		
 	}
-	m_pAutonomousController->Reset();
+	m_pPlaybackController->Reset();
+	m_pScoreThreeController->Reset();
 }
 
 /*!
@@ -395,7 +395,11 @@ void KBot::AutonomousPeriodic(void)
 	
 	if (m_autoMode==0)
 	{
-		RunRobot(m_pAutonomousController);
+		RunRobot(m_pPlaybackController);
+	}
+	else if (m_autoMode == 1)
+	{
+		RunRobot(m_pScoreThreeController);
 	}
 }
 
@@ -742,7 +746,7 @@ void KBot::UpdateMotors()
 		fR += m_mapWeightR[nIndex]*m_mapR[nIndex];
 	}
 	
-	//double wheelSpeeds[4];  // signs changed to get rotation right
+	double wheelSpeeds[4];  // signs changed to get rotation right
 	wheelSpeeds[0] = -fX + fY - fR;
 	wheelSpeeds[1] = fX + fY + fR;
 	wheelSpeeds[2] = -fX + fY + fR;
@@ -750,6 +754,14 @@ void KBot::UpdateMotors()
 	
 	DeadbandNormalize(wheelSpeeds);
 
+	static int nCount = 0;
+	if (nCount > 50)
+	{
+		//std::cerr << wheelSpeeds[0] << " " << wheelSpeeds[1] << std::endl;
+		nCount = 0;
+	}
+	++nCount;
+	
 	// actually set speeds (negate right side due to motor mounting)
 	UINT8 syncGroup = 0x80;	
 	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*150.0 , syncGroup);

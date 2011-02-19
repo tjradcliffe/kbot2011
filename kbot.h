@@ -17,6 +17,7 @@ class AutonomousController;
 class Controller;
 class I2C_Ultrasound;
 class DistanceSensor;
+class ScoreThreeController;
 class TeleopController;
 class KbotPID;
 
@@ -39,6 +40,8 @@ motors and actuators.
 */ 
 class KBot : public IterativeRobot
 {
+	friend class ScoreThreeController;
+	
 public:
 	
 	//! Constructor builds the essentials
@@ -133,7 +136,7 @@ protected:
 	//! Update the light relays
 	void UpdateLights();
 	
-private:
+protected:
 	static const int kPeriodicSpeed;
 	
 	// PID constants for asymmetric PID controller
@@ -232,7 +235,8 @@ private:
 	
 	// Declare variables for the controllers
 	TeleopController *m_pTeleopController;
-	AutonomousController *m_pAutonomousController;
+	AutonomousController *m_pPlaybackController;
+	ScoreThreeController *m_pScoreThreeController;
 
 	// compressor control and sensor
 	Relay	*m_pCompressorRelay;
