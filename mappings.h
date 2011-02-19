@@ -143,10 +143,10 @@ enum SolenoidMappings
 //! The relay ids
 enum RelayMappings
 {
-	knCompressorRelay = 1,  // ???
-	knRedLight = 2,  // ???
-	knWhiteLight = 3,  // ???
-	knBlueLight = 4,  // ???
+	knCompressorRelay = 1,
+	knRedLight = 2,
+	knWhiteLight = 3,
+	knBlueLight = 4,
 };
 
 //! The analog sensor mappings
@@ -172,9 +172,9 @@ enum DigitalMapping
 	knCompressorLimit = 1,
 	knTubeRight = 2,	// CHECKED (0 = tube)
 	knTubeLeft = 3,		// CHECKED (0 = tube)
-	knLineRight = 6,  // CHECKED (1 = line)
-	knLineLeft = 5,   // CHECKED (1 = line)
-	knLineBack = 4,   // CHECKED (1 = line)
+	knLineRight = 6,  // CHECKED (0 = line)
+	knLineLeft = 5,   // CHECKED (0 = line)
+	knLineBack = 4,   // CHECKED (0 = line)
 	knRetroReflector = 7, // CHECKED (0 = present)
 	knRecordSwitch = 8,
 	knRecoverSwitch = 9,
@@ -185,7 +185,8 @@ enum CalculationMapping
 {
 	knDriverInput,
 	knGyroTracking,
-	knWallFollower,
+	knLineFollowing,
+	knWallAlign,
 };
 
 #endif // MAPPINGS_H

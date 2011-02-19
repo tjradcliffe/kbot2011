@@ -54,11 +54,11 @@ KBot::KBot(void)
 	// Arm PID controller:
 	m_pArmPID = new KbotPID(k_posP, 0.01, 0.0);
 
+	// Line following PID
+	m_pLinePID = new KbotPID(1.0, 0.0, 2.0);
+	
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
-	//m_pArmAngle->SetAverageBits(0); //kAverageBits);
-	//m_pArmAngle->SetOversampleBits(5); //kOversampleBits);
-	//float sampleRate = kSamplesPerSecond * (1 << (kAverageBits + kOversampleBits));
 
 	m_nDeployerPosition = 0;	// IN
 	m_nWristPosition = 0;		// FOLDED
@@ -204,6 +204,10 @@ void KBot::RobotInit()
 	m_pArmPID->setMinOutput(-1.0); // Max range
 	m_pArmPID->setDeadBand(0.4); // about +=2.4V
 	
+	m_pLinePID->setDesiredValue(0.0);
+	m_pLinePID->setMaxOutput(1.0); // Max range
+	m_pLinePID->setMinOutput(-1.0); // Max range
+	
 	m_pLeftFrontJaguar->ConfigEncoderCodesPerRev(360);
 	m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
 	m_pRightFrontJaguar->ConfigEncoderCodesPerRev(360);
@@ -332,7 +336,7 @@ void KBot::DisabledPeriodic(void)
 		nCount = 0;
 	
 //#define CONTROLLER_DEBUG
-//#define ANALOG_DEBUG
+#define ANALOG_DEBUG
 //#define DIGITAL_DEBUG
 #ifdef CONTROLLER_DEBUG
 		m_pTeleopController->Update();
@@ -557,22 +561,6 @@ void KBot::ComputeLights(Controller* pController)
 	}
 }
 
-//! Compute wall strafing
-void KBot::ComputeWallStrafing(Controller* pController)
-{
-	// implement strafing logic here
-	//KEVIN:m_mapX[knStrafeInput] = pController->GetAxis(knZ);
-	//m_mapR[knStrafeInput] = k_IRTurnGain*(m_mapAnalogSensors[knLeftIR]-m_mapAnalogSensors[knRightIR]+kIRoffset);
-	
-}
-
-//! Compute line following
-void KBot::ComputeLineFollowing(Controller* pController)
-{
-	
-}
-
-
 /*!
 Compute the XYR for the controller.  If we have a program
 button for "move-to-wall", say, this is where it will be
@@ -584,15 +572,6 @@ void KBot::ComputeControllerXYR(Controller* pController)
 	m_mapX[knDriverInput] = -pController->GetAxis(knX);
 	m_mapY[knDriverInput]  = -pController->GetAxis(knY);
 	m_mapR[knDriverInput] = pController->GetAxis(knR);	
-	if (pController->GetButton(knLineFollowButton))
-	{
-		// implement line-follow logic based on sensors here
-		ComputeLineFollowing(pController);
-	}
-	else if (pController->GetButton(knStrafeWallButton))  //fabs(pController->GetAxis(knZ)) > 0.05)		//pController->GetButton(knStrafeButton))
-	{
-		ComputeWallStrafing(pController);
-	}
 }
 
 /*!
@@ -600,7 +579,45 @@ Compute the rotation we want based on gyroscopic station-keeping
 */
 void KBot::ComputeGyroXYR()
 {
+	m_mapX[knGyroTracking] = 0;	
+	m_mapY[knGyroTracking] = 0;	
 	m_mapR[knGyroTracking] = kfRotationFactor*(m_mapAnalogSensors[knGyro]-m_fGyroSetPoint);	
+}
+
+/*!
+Compute the rotation we want based on line following
+*/
+void KBot::ComputeLineAndWallXYR()
+{
+	m_mapX[knLineFollowing] = 0;	
+	m_mapY[knLineFollowing] = 0;	
+	float fSignal = 0;
+	if (0 == m_mapDigitalSensors[knLineRight])
+	{
+		fSignal += 1;
+	}
+	if (0 == m_mapDigitalSensors[knLineLeft])
+	{
+		fSignal -= 1;		
+	}
+	m_mapR[knLineFollowing] = 100*m_mapY[knDriverInput]*kfRotationFactor*m_pLinePID->calcPID(fSignal);
+	
+	float fRightWallDistance = m_mapAnalogSensors[knRightIRSensor];
+	float fLeftWallDistance = m_mapAnalogSensors[knLeftIRSensor];
+	float fAverageDistance = (fRightWallDistance+fLeftWallDistance)/2.0f;
+	float fMinDistance = 50.0f;
+	float fMaxDistance = 150.0f;
+	m_mapX[knWallAlign] = 0;	
+	m_mapY[knWallAlign] = 0;	
+	m_mapR[knWallAlign] = 0;
+	if (fAverageDistance < fMaxDistance)
+	{
+		float fDifference = fRightWallDistance-fLeftWallDistance;
+		m_mapR[knWallAlign] = kfRotationFactor*fDifference; 
+		
+		// effectively subract off some portion of the approach velocity
+		m_mapY[knWallAlign] = -m_mapY[knDriverInput]*(fMaxDistance-fAverageDistance)/(fMaxDistance-fMinDistance);
+	}
 }
 
 /*!
@@ -611,6 +628,7 @@ void KBot::ComputeActuators(Controller* pController)
 {
 	ComputeControllerXYR(pController);
 	ComputeGyroXYR();
+	ComputeLineAndWallXYR();
 	ComputeArmAndDeployer(pController);
 	ComputeLights(pController);
 }
@@ -741,9 +759,24 @@ void KBot::ComputeWeights(Controller* pController)
 	m_mapWeightY[knGyroTracking] = 0.0f;
 	m_mapWeightR[knGyroTracking] = 0.0f;
 	
+	m_mapWeightX[knLineFollowing] = 0.0f; // assume no input from line
+	m_mapWeightY[knLineFollowing] = 0.0f;
+	m_mapWeightR[knLineFollowing] = 0.0f;
+	
+	m_mapWeightX[knWallAlign] = 0.0f; // assume no input from wall
+	m_mapWeightY[knWallAlign] = 0.0f;
+	m_mapWeightR[knWallAlign] = 0.0f;
+	
 	if (fabs(m_mapR[knDriverInput]) > 0.1f)	// let stick have control
 	{
 		m_fGyroSetPoint = m_mapAnalogSensors[knGyro];
+	}
+	else if (pController->GetButton(knLineFollowButton))
+	{
+		m_mapWeightR[knLineFollowing] = 1.0f;	// consider line rotation
+		m_mapWeightR[knWallAlign] = 1.0f;	// Consider wall rotation
+		m_mapWeightY[knWallAlign] = 1.0f;	// let wall reduce speed (keep driver speed)
+		m_mapWeightR[knDriverInput] = 0.0f;	// ignore driver rotation	
 	}
 	else						// let gyro have control
 	{
@@ -783,9 +816,9 @@ void KBot::UpdateMotors()
 	DeadbandNormalize(wheelSpeeds);
 
 	static int nCount = 0;
-	if (nCount > 50)
+	if (nCount > 10)
 	{
-		//std::cerr << wheelSpeeds[0] << " " << wheelSpeeds[1] << std::endl;
+		std::cerr << m_mapWeightY[knDriverInput] << " " << m_mapWeightY[knWallAlign] << " " << fY << std::endl;
 		nCount = 0;
 	}
 	++nCount;

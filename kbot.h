@@ -99,18 +99,15 @@ protected:
 	
 	// Compute gyro inputs and weight
 	void ComputeGyroXYR();
+
+	// Compute rotation etc for line following
+	void ComputeLineAndWallXYR();
 	
 	// Compute the arm and deployer actuator outputs
 	void ComputeArmAndDeployer(Controller* pController);
 	
 	// Compute the light states
 	void ComputeLights(Controller* pController);
-	
-	//! Compute wall strafing
-	void ComputeWallStrafing(Controller* pController);
-	
-	//! Compute line following
-	void ComputeLineFollowing(Controller* pController);
 	
 	//! Compute the weight given each of the inputs
 	void ComputeWeights(Controller* pController);
@@ -176,7 +173,11 @@ protected:
 	float m_fTargetArmAngle;
 	float m_fArmSpeed;
 	
+	// Arm PID
 	KbotPID *m_pArmPID;
+	
+	// Line following PID
+	KbotPID *m_pLinePID;
 	
 	//! wrist position we want (0 == in, 1 == out)
 	int m_nWristPosition;
