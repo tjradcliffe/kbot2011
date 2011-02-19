@@ -62,8 +62,8 @@ const int knAllLightsButton = 0;	// Green A Button
 const int knRedTubeButton = 1;		// Red B button
 const int knBlueTubeButton = 2;		// Blue X button
 const int knWhiteTubeButton = 3;	// Yellow Y button
-const int knMoveToWallButton = 4;	// Right front button
-const int knStrafeButton = 5;		// Left front button
+const int knLineFollowButton = 4;	// Right front button
+const int knStrafeWallButton = 5;	// Left front button
 const int knDeployerOutButton = 7;	// Right little button
 
 //! Axis mappings

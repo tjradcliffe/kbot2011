@@ -85,7 +85,7 @@ KBot::KBot(void)
 	m_pCompressorLimit = new DigitalInput(knCompressorLimit);
 	
 	// controllers
-	m_pTeleopController = new TeleopController("test.dat");
+	m_pTeleopController = new TeleopController(""); //"test.dat");
 	m_pAutonomousController = new AutonomousController(this, "test.dat");
 	
 	// gyro
@@ -291,6 +291,9 @@ void KBot::AutonomousInit()
 	m_pLowerRollerJaguar->SetSafetyEnabled(true);
 	m_pUpperRollerJaguar->SetSafetyEnabled(true);
 	ResetRobot();
+	
+	//Check switches and set autonomous mode
+	m_autoMode = 0;
 }
 
 /*!
@@ -390,7 +393,10 @@ void KBot::AutonomousPeriodic(void)
 {
 	GetWatchdog().Feed();
 	
-	RunRobot(m_pAutonomousController);
+	if (m_autoMode==0)
+	{
+		RunRobot(m_pAutonomousController);
+	}
 }
 
 /**
@@ -491,8 +497,10 @@ void KBot::ReadSensors()
 	// read current gyro angle
 	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
 	
+	// NOTE Right IR sensor is set 18 cm back from left, which is on the front
+	// of the robot
 	m_mapAnalogSensors[knLeftIRSensor] = m_pLeftIRSensor->GetDistance();
-	m_mapAnalogSensors[knRightIRSensor] = m_pRightIRSensor->GetDistance();
+	m_mapAnalogSensors[knRightIRSensor] = m_pRightIRSensor->GetDistance()-18.0f;
 	
 	ReadUltrasoundSensors();	// put ping logic in its own method
 	
@@ -541,6 +549,22 @@ void KBot::ComputeLights(Controller* pController)
 	}
 }
 
+//! Compute wall strafing
+void KBot::ComputeWallStrafing(Controller* pController)
+{
+	// implement strafing logic here
+	//KEVIN:m_mapX[knStrafeInput] = pController->GetAxis(knZ);
+	//m_mapR[knStrafeInput] = k_IRTurnGain*(m_mapAnalogSensors[knLeftIR]-m_mapAnalogSensors[knRightIR]+kIRoffset);
+	
+}
+
+//! Compute line following
+void KBot::ComputeLineFollowing(Controller* pController)
+{
+	
+}
+
+
 /*!
 Compute the XYR for the controller.  If we have a program
 button for "move-to-wall", say, this is where it will be
@@ -552,15 +576,14 @@ void KBot::ComputeControllerXYR(Controller* pController)
 	m_mapX[knDriverInput] = -pController->GetAxis(knX);
 	m_mapY[knDriverInput]  = -pController->GetAxis(knY);
 	m_mapR[knDriverInput] = pController->GetAxis(knR);	
-	if (pController->GetButton(knMoveToWallButton))
+	if (pController->GetButton(knLineFollowButton))
 	{
-		// implement move-to-wall logic based on sensors here
+		// implement line-follow logic based on sensors here
+		ComputeLineFollowing(pController);
 	}
-	else if (pController->GetButton(knStrafeButton))  //fabs(pController->GetAxis(knZ)) > 0.05)		//pController->GetButton(knStrafeButton))
+	else if (pController->GetButton(knStrafeWallButton))  //fabs(pController->GetAxis(knZ)) > 0.05)		//pController->GetButton(knStrafeButton))
 	{
-		// implement strafing logic here
-		//KEVIN:m_mapX[knStrafeInput] = pController->GetAxis(knZ);
-		//m_mapR[knStrafeInput] = k_IRTurnGain*(m_mapAnalogSensors[knLeftIR]-m_mapAnalogSensors[knRightIR]+kIRoffset);
+		ComputeWallStrafing(pController);
 	}
 }
 
@@ -640,7 +663,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		}
 		else if (pController->GetButton(knArmLow))//2
 		{
-			m_fTargetArmAngle = 845.0f;
+			m_fTargetArmAngle = 847.0f;
 		}
 		
 		// give the joystick the opportunity to over-ride

@@ -103,6 +103,12 @@ protected:
 	// Compute the light states
 	void ComputeLights(Controller* pController);
 	
+	//! Compute wall strafing
+	void ComputeWallStrafing(Controller* pController);
+	
+	//! Compute line following
+	void ComputeLineFollowing(Controller* pController);
+	
 	//! Compute the weight given each of the inputs
 	void ComputeWeights(Controller* pController);
 	
@@ -250,6 +256,8 @@ private:
 	
 	// accelerometer
 	//ADXL345_I2C* m_pAccelerometer;
+	
+	int m_autoMode;
 	
 }; // class declaration
 
