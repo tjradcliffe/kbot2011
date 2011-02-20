@@ -553,7 +553,14 @@ void KBot::ComputeLights(Controller* pController)
 	}
 	else if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
 	{
-		m_nLightState = knTubeCaptureSignal;
+		if (m_nWristPosition == 1)
+		{
+			m_nLightState = knTubeCaptureSignal;
+		}
+		else
+		{
+			m_nLightState = knAllLightsOff;		
+		}
 	}	
 	else
 	{
@@ -734,10 +741,13 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 
 		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
 		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);
-		if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
+		if (pController->GetAxis(knRollInOut) > 0)
 		{
-			m_fLowerJawRollerSpeed = (m_mapAnalogSensors[knTubeIR]-300.0)/200.0;
-			m_fUpperJawRollerSpeed = -m_fLowerJawRollerSpeed;
+			if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
+			{
+				m_fLowerJawRollerSpeed = (m_mapAnalogSensors[knTubeIR]-300.0)/200.0;
+				m_fUpperJawRollerSpeed = -m_fLowerJawRollerSpeed;
+			}
 		}
 	}
 }
@@ -818,7 +828,7 @@ void KBot::UpdateMotors()
 	static int nCount = 0;
 	if (nCount > 10)
 	{
-		std::cerr << m_mapWeightY[knDriverInput] << " " << m_mapWeightY[knWallAlign] << " " << fY << std::endl;
+		std::cerr << m_mapAnalogSensors[knLeftIRSensor] << " " << fY << std::endl;
 		nCount = 0;
 	}
 	++nCount;
