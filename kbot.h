@@ -179,6 +179,9 @@ protected:
 	// Line following PID
 	KbotPID *m_pLinePID;
 	
+	// Line following counter
+	int m_nLineCount;
+	
 	//! wrist position we want (0 == in, 1 == out)
 	int m_nWristPosition;
 	
@@ -204,6 +207,10 @@ protected:
 	CANJaguar *m_pLeftBackJaguar;
 	CANJaguar *m_pRightFrontJaguar;
 	CANJaguar *m_pRightBackJaguar;
+	
+	// convenience array of jags
+	std::vector<CANJaguar*> m_vecJags;
+	std::vector<int> m_vecJagErrors;
 	
 	//! Motor controller for arm and roller claws
 	CANJaguar *m_pArmJaguar;

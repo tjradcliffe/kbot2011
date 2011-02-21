@@ -45,6 +45,20 @@ KBot::KBot(void)
 	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, CANJaguar::kSpeed);
 	m_pLeftBackJaguar->Set(0.0f);
 	
+	m_pRightFrontJaguar->ConfigFaultTime(0.5f);
+	m_pLeftFrontJaguar->ConfigFaultTime(0.5f);
+	m_pRightBackJaguar->ConfigFaultTime(0.5f);
+	m_pLeftBackJaguar->ConfigFaultTime(0.5f);
+	
+	m_vecJags.push_back(m_pRightFrontJaguar);
+	m_vecJags.push_back(m_pLeftFrontJaguar);
+	m_vecJags.push_back(m_pRightBackJaguar);
+	m_vecJags.push_back(m_pLeftBackJaguar);
+	m_vecJagErrors.push_back(0);
+	m_vecJagErrors.push_back(0);
+	m_vecJagErrors.push_back(0);
+	m_vecJagErrors.push_back(0);
+	
 	// Arm actuators
 	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kVoltage);
 	//m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
@@ -56,7 +70,8 @@ KBot::KBot(void)
 
 	// Line following PID
 	m_pLinePID = new KbotPID(1.0, 0.0, 2.0);
-	
+	m_nLineCount = 0;
+
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
 
@@ -83,8 +98,8 @@ KBot::KBot(void)
 	m_pCompressorLimit = new DigitalInput(knCompressorLimit);
 	
 	// controllers
-	m_pTeleopController = new TeleopController("");
-	m_pPlaybackController = new AutonomousController(this, "score1.dat");
+	m_pTeleopController = new TeleopController("");//score1_follow.dat");
+	m_pPlaybackController = new AutonomousController(this, "score1_follow.dat");
 	m_pScoreThreeController = new ScoreThreeController(this);
 	
 	// gyro
@@ -147,6 +162,8 @@ void KBot::ResetRobot(bool bRecordTeleop)
 	
 	m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
 
+	m_nLineCount = 0;
+	
 	m_pBlueLightRelay->Set(Relay::kOff);
 	m_pRedLightRelay->Set(Relay::kOff);
 	m_pWhiteLightRelay->Set(Relay::kOff);
@@ -417,16 +434,38 @@ void KBot::TeleopPeriodic(void)
 	
 	RunRobot(m_pTeleopController);
 
-	static int nCount = 0;
+	bool bNewErrors = false;
+	for(unsigned int nIndex = 0; nIndex < m_vecJags.size(); ++nIndex)
+	{
+		int nError = m_vecJags[nIndex]->GetFaults();
+		if (nError != m_vecJagErrors[nIndex])
+		{
+			std::cerr << nIndex+1 << " " << nError << " | ";
+			m_vecJagErrors[nIndex] = nError;
+			bNewErrors = true;
+		}
+	}
+	if (bNewErrors)	// newline if we have seen new errorss
+	{
+		std::cerr << std::endl;
+	}
 	
+	static int nCount = 0;	
 	if (nCount == 50)  // once per second
 	{
+		if (0 != m_pLeftFrontJaguar->GetFaults() + m_pRightFrontJaguar->GetFaults() + m_pLeftBackJaguar->GetFaults() + m_pRightBackJaguar->GetFaults() + m_pArmJaguar->GetFaults() + m_pUpperRollerJaguar->GetFaults() + m_pLowerRollerJaguar->GetFaults() )
+		{
+			std::cerr << m_pLeftFrontJaguar->GetFaults() << " " << m_pRightFrontJaguar->GetFaults() << " " << m_pLeftBackJaguar->GetFaults() << " " << m_pRightBackJaguar->GetFaults() << " " << m_pArmJaguar->GetFaults() << " " << m_pUpperRollerJaguar->GetFaults() << " " << m_pLowerRollerJaguar->GetFaults() << " " <<std::endl; 
+		}
+		std::cerr << m_pLeftFrontJaguar->GetBusVoltage() << " " << m_pRightFrontJaguar->GetBusVoltage() << " " << m_pLeftBackJaguar->GetBusVoltage() << " " << m_pRightBackJaguar->GetBusVoltage() << " " << m_pArmJaguar->GetBusVoltage() << " " << m_pUpperRollerJaguar->GetBusVoltage() << " " << m_pLowerRollerJaguar->GetBusVoltage() << " " <<std::endl; 
+
 		nCount = 0;
-		//std::cerr << m_pArmJaguar->GetPosition() << " <-- " << m_pArmJaguar->Get() << " <-- " << m_mapAnalogSensors[knArmAngle] <<std::endl; 
+		//std::cerr << m_pLeftFrontJaguar->GetTemperature() << " " << m_pRightFrontJaguar->GetTemperature() << " " << m_pLeftBackJaguar->GetTemperature() << " " << m_pRightBackJaguar->GetTemperature() << " " << m_pArmJaguar->GetTemperature() << " " << m_pUpperRollerJaguar->GetTemperature() << " " << m_pLowerRollerJaguar->GetTemperature() << " " <<std::endl; 
 		//std::cerr << wheelSpeeds[0] << "  " << wheelSpeeds[1] << "  " << "  " << wheelSpeeds[2] << "  " << wheelSpeeds[3] <<std::endl;
 		//std::cerr << m_pLeftFrontJaguar->GetOutputVoltage() << "  " << m_pRightFrontJaguar->GetOutputVoltage() << "  " <<m_pLeftBackJaguar->GetOutputVoltage() << "  " <<m_pRightBackJaguar->GetOutputVoltage() << "  " <<std::endl;
 	}
 	++nCount;
+	
 }
 
 /*!
@@ -508,7 +547,7 @@ void KBot::ReadSensors()
 	// NOTE Right IR sensor is set 18 cm back from left, which is on the front
 	// of the robot
 	m_mapAnalogSensors[knLeftIRSensor] = m_pLeftIRSensor->GetDistance();
-	m_mapAnalogSensors[knRightIRSensor] = m_pRightIRSensor->GetDistance()-18.0f;
+	m_mapAnalogSensors[knRightIRSensor] = m_pRightIRSensor->GetDistance()-12.0f;
 	
 	ReadUltrasoundSensors();	// put ping logic in its own method
 	
@@ -533,6 +572,16 @@ void KBot::ReadSensors()
 	
 }
 
+/*!
+Light logic is as follows:
+
+\param pController controller running the robot
+
+Red/light/blue on for appropriate buttons
+All lights for "all lights" button
+Top and Bottom lights flash when tube in place in roller claw
+Otherwise all lights off
+*/
 void KBot::ComputeLights(Controller* pController)
 {
 	if (pController->GetButton(knRedTubeButton))
@@ -596,8 +645,16 @@ Compute the rotation we want based on line following
 */
 void KBot::ComputeLineAndWallXYR()
 {
+	static float fLineFollowingStartSpeed = 1.0f;
+	static float fLineFollowingMinSpeed = 0.25f;
+	static int nMaxCount = 50;
+	
+	float fLineFollowingSpeed = fLineFollowingStartSpeed*(nMaxCount-m_nLineCount)/nMaxCount;
+	fLineFollowingSpeed = fLineFollowingSpeed>fLineFollowingMinSpeed?fLineFollowingSpeed:fLineFollowingMinSpeed;
+	++m_nLineCount;
+	
 	m_mapX[knLineFollowing] = 0;	
-	m_mapY[knLineFollowing] = 0;	
+	m_mapY[knLineFollowing] = fLineFollowingSpeed;	
 	float fSignal = 0;
 	if (0 == m_mapDigitalSensors[knLineRight])
 	{
@@ -607,23 +664,35 @@ void KBot::ComputeLineAndWallXYR()
 	{
 		fSignal -= 1;		
 	}
-	m_mapR[knLineFollowing] = 100*m_mapY[knDriverInput]*kfRotationFactor*m_pLinePID->calcPID(fSignal);
+	m_mapR[knLineFollowing] = -2000*m_mapY[knDriverInput]*kfRotationFactor*fSignal;
+
+	bool bOnCrossbar = false;
+	if ((0 == m_mapDigitalSensors[knLineRight]) && (0 == m_mapDigitalSensors[knLineLeft]))
+	{
+		bOnCrossbar = true;
+	}
 	
 	float fRightWallDistance = m_mapAnalogSensors[knRightIRSensor];
 	float fLeftWallDistance = m_mapAnalogSensors[knLeftIRSensor];
-	float fAverageDistance = (fRightWallDistance+fLeftWallDistance)/2.0f;
+	float fLowerDistance = (fRightWallDistance<fLeftWallDistance)?fRightWallDistance:fLeftWallDistance;
 	float fMinDistance = 50.0f;
-	float fMaxDistance = 150.0f;
+	float fMaxDistance = 250.0f;
 	m_mapX[knWallAlign] = 0;	
 	m_mapY[knWallAlign] = 0;	
 	m_mapR[knWallAlign] = 0;
-	if (fAverageDistance < fMaxDistance)
+	if (fLowerDistance < fMaxDistance)
 	{
-		float fDifference = fRightWallDistance-fLeftWallDistance;
-		m_mapR[knWallAlign] = kfRotationFactor*fDifference; 
+		if (bOnCrossbar)	// within max distance and on crossbar so stop
+		{
+			m_mapY[knLineFollowing] = 0.0f;			
+		}
 		
 		// effectively subract off some portion of the approach velocity
-		m_mapY[knWallAlign] = -m_mapY[knDriverInput]*(fMaxDistance-fAverageDistance)/(fMaxDistance-fMinDistance);
+		m_mapY[knWallAlign] = -0.75*fLineFollowingSpeed*(fMaxDistance-fLowerDistance)/(fMaxDistance-fMinDistance);
+	}
+	else if (fLowerDistance < fMinDistance)
+	{
+		m_mapY[knWallAlign] = -fLineFollowingSpeed;
 	}
 }
 
@@ -784,9 +853,11 @@ void KBot::ComputeWeights(Controller* pController)
 	else if (pController->GetButton(knLineFollowButton))
 	{
 		m_mapWeightR[knLineFollowing] = 1.0f;	// consider line rotation
-		m_mapWeightR[knWallAlign] = 1.0f;	// Consider wall rotation
-		m_mapWeightY[knWallAlign] = 1.0f;	// let wall reduce speed (keep driver speed)
+		m_mapWeightY[knLineFollowing] = 1.0f;
+		m_mapWeightR[knWallAlign] = 0.5f;	// Consider wall rotation
+		m_mapWeightY[knWallAlign] = 1.0f;	// let wall reduce speed
 		m_mapWeightR[knDriverInput] = 0.0f;	// ignore driver rotation	
+		m_mapWeightY[knDriverInput] = 0.0f;	// ignore stick
 	}
 	else						// let gyro have control
 	{
@@ -828,7 +899,7 @@ void KBot::UpdateMotors()
 	static int nCount = 0;
 	if (nCount > 10)
 	{
-		std::cerr << m_mapAnalogSensors[knLeftIRSensor] << " " << fY << std::endl;
+//		std::cerr << m_mapAnalogSensors[knLeftIRSensor] << " " << m_mapAnalogSensors[knRightIRSensor]  << std::endl;
 		nCount = 0;
 	}
 	++nCount;
