@@ -15,7 +15,7 @@
 // local forward declarations
 class AutonomousController;
 class Controller;
-class I2C_Ultrasound;
+//class I2C_Ultrasound;
 class DistanceSensor;
 class ScoreThreeController;
 class TeleopController;
@@ -236,8 +236,8 @@ protected:
 	float m_fGyroSetPoint;
 	
 	// I2C ultrasound sensors
-	I2C_Ultrasound* m_pLeftUltrasound;
-	I2C_Ultrasound* m_pRightUltrasound;
+	//I2C_Ultrasound* m_pLeftUltrasound;
+	//I2C_Ultrasound* m_pRightUltrasound;
 	
 	// Analog distance sensors
 	DistanceSensor* m_pLeftIRSensor;

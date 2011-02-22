@@ -11,7 +11,7 @@
 #include "KbotPID.h"
 
 // FRC includes
-#include "I2C.h"
+//#include "I2C.h"
 
 // standard includes
 #include <numeric>
@@ -90,8 +90,8 @@ KBot::KBot(void)
 	//m_pAccelerometer = new ADXL345_I2C(knDigitalSlot, ADXL345_I2C::kRange_2G);
 	
 	// ultrasounds
-	m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
-	m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
+	//m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
+	//m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
 	
 	// analog distance sensors
 	m_pLeftIRSensor = new DistanceSensor(knLeftIRSensor);
@@ -317,10 +317,10 @@ void KBot::RobotInit()
 	m_pGyro->SetSensitivity(0.007); // 7 mV/deg/s
 	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
 	
-	m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
-	m_pLeftUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
-	m_pRightUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
-	m_pRightUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
+	//m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
+	//m_pLeftUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
+	//m_pRightUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
+	//m_pRightUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
 	
 	// Reprogram Ultrasound's I2C address:
 	//   Create the Ultrasound with an address of E0 (for an unprogrammed Ultrasound)
@@ -614,7 +614,7 @@ Read or ping the ultrasounds, depending on where we are
 in an internal loop.  They are pinged at different times,
 which may create issues with the control logic.
 */
-void KBot::ReadUltrasoundSensors()
+/*void KBot::ReadUltrasoundSensors()
 {
 	static int nUltrasoundCount = 0;
 	
@@ -642,7 +642,7 @@ void KBot::ReadUltrasoundSensors()
 	}
 	++nUltrasoundCount;
 	
-}
+}*/
 
 /*!
 Read all the sensors, at least conceptually.  Some of them,
@@ -661,7 +661,7 @@ void KBot::ReadSensors()
 	m_mapAnalogSensors[knLeftIRSensor] = m_pLeftIRSensor->GetDistance();
 	m_mapAnalogSensors[knRightIRSensor] = m_pRightIRSensor->GetDistance()-12.0f;
 	
-	ReadUltrasoundSensors();	// put ping logic in its own method
+	//ReadUltrasoundSensors();	// put ping logic in its own method
 	
 	m_mapAnalogSensors[knArmAngle] = m_pArmAngle->GetValue();
 	m_mapAnalogSensors[knTubeIR] = m_pTubeIR->GetValue();
