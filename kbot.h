@@ -202,6 +202,11 @@ protected:
 	Relay	*m_pWhiteLightRelay;
 
 	///*************ACTUATORS******************
+
+	void ResetJags();  // DO NOT CALL!!! CRASHES MotorSafetyHelper
+	void BuildJags();
+	void InitJags();
+	
 	//! Motor controllers for body
 	CANJaguar *m_pLeftFrontJaguar;
 	CANJaguar *m_pLeftBackJaguar;
@@ -216,7 +221,7 @@ protected:
 	CANJaguar *m_pArmJaguar;
 	CANJaguar *m_pLowerRollerJaguar;
 	CANJaguar *m_pUpperRollerJaguar;
-
+	
 	//! Solenoids to control wrist, jaw and swing-arm
 	Solenoid *m_pWristOutSolenoid;
 	Solenoid *m_pWristInSolenoid;
@@ -263,8 +268,12 @@ protected:
 	// retro-reflector (if we use it)
 	DigitalInput* m_pRetroReflector;
 	
-	// Teleop record mode switch
-	DigitalInput* m_pRecordSwitch;
+	// Switches
+	DigitalInput* m_pRecordSwitch;		// 0 = record
+	DigitalInput* m_pRecoverSwitch;		// 0 = recover
+	DigitalInput* m_pMirrorSwitch;		// 0 = invert recorded rotations
+	DigitalInput* m_pOneTwoTubeSwitch;	// 0 = one tube, 1 = two tubes
+	DigitalInput* m_pFifthSwitch;		// "What is this quintesence of switch?"
 	
 	// accelerometer
 	//ADXL345_I2C* m_pAccelerometer;

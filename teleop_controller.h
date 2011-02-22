@@ -16,7 +16,7 @@ class TeleopController : public Controller
 {
 public:
 	
-	TeleopController(std::string strOutputFilename = "");
+	TeleopController();
 	~TeleopController();
 	
 	void Update();
@@ -34,8 +34,6 @@ private:
 	//! output stream for recording
 	std::ofstream *m_pOutStream;
 	
-	//! Output stream name
-	std::string m_strOutputFilename;
 };
 
 #endif // TELEOP_CONTROLLER_H

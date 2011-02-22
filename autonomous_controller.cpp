@@ -1,10 +1,13 @@
 #include "autonomous_controller.h"
 
+// require mappings so we know what axis to mirror
+#include "mappings.h"
+
 // standard includes
 #include <iostream>
 
-AutonomousController::AutonomousController(KBot* pRobot, std::string strInputFilename) :
-	m_pRobot(pRobot), m_strInputFilename(strInputFilename), m_bResetStream(false)
+AutonomousController::AutonomousController(KBot* pRobot) :
+	m_pRobot(pRobot), m_bResetStream(false), m_bMirror(false)
 {
 }
 
@@ -26,7 +29,7 @@ void AutonomousController::Update()
 	
 	if (0 == pInStream)
 	{
-		pInStream = new std::ifstream(m_strInputFilename.c_str());
+		pInStream = new std::ifstream(m_strFilename.c_str());
 	}
 	
 	int nTimeCount = 0;
@@ -41,6 +44,18 @@ void AutonomousController::Update()
 		{
 			(*pInStream) >> m_vecButtons[nIndex];
 		}
+		
+		if (m_bMirror)	// mirror the rotation axis
+		{
+			m_vecAxes[knR] *= -1;
+		}
+	}
+	else	// file did not open or ran out
+	{
+		for (int nIndex = 0; nIndex < m_nStickNumber*m_nAxisNumber; ++nIndex)
+		{
+			m_vecAxes[nIndex] = 0;
+		}		
 	}
 	
 	++m_nTimeCount;

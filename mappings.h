@@ -62,8 +62,8 @@ const int knAllLightsButton = 0;	// Green A Button
 const int knRedTubeButton = 1;		// Red B button
 const int knBlueTubeButton = 2;		// Blue X button
 const int knWhiteTubeButton = 3;	// Yellow Y button
-const int knLineFollowButton = 4;	// Right front button
-const int knStrafeWallButton = 5;	// Left front button
+const int knLineFollowButton = 4;	// Left front button
+const int knResetJagsButton = 5;	// Right front button
 const int knDeployerOutButton = 7;	// Right little button
 
 const int knAutoScoreAxis = 9;	// Left D-button on Logitech
@@ -122,11 +122,11 @@ enum MiniBotStates
 enum LightState
 {
 	knAllLightsOff,
-	knBlueLightRelay = 2,
-	knRedLightRelay = 3,
-	knWhiteLightRelay = 4,
-	knAllLightsOn = 5,
-	knTubeCaptureSignal = 6,
+	knBlueLight,
+	knRedLight,
+	knWhiteLight,
+	knAllLightsOn,
+	knTubeCaptureSignal,
 };
 
 //! The solenoid ids
@@ -143,10 +143,10 @@ enum SolenoidMappings
 //! The relay ids
 enum RelayMappings
 {
-	knCompressorRelay = 1,
-	knRedLight = 2,
-	knWhiteLight = 3,
-	knBlueLight = 4,
+	knCompressorRelay = 4,
+	knRedLightRelay = 1,
+	knWhiteLightRelay = 2,
+	knBlueLightRelay = 3,
 };
 
 //! The analog sensor mappings
@@ -176,8 +176,11 @@ enum DigitalMapping
 	knLineLeft = 5,   // CHECKED (0 = line)
 	knLineBack = 4,   // CHECKED (0 = line)
 	knRetroReflector = 7, // CHECKED (0 = present)
-	knRecordSwitch = 8,
-	knRecoverSwitch = 9,
+	knRecordSwitch = 8,			// 0 (light) is playback, 1 is record
+	knOneTwoTubeSwitch = 9,		// 0 (light) is one tube, 1 is two tubes
+	knMirrorSwitch = 10,		// 0 (light) is right of field (mirrored), 1 is left (unmirrored)	
+	knRecoverSwitch = 11,		// (not implemented) 1 is recover all recorded files from playback
+	knFifthSwitch = 12,			// "What is this quintesence of switch?"
 };
 
 //! The calculation mappings

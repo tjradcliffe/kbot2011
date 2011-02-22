@@ -8,14 +8,12 @@
 static int knOperatorStick = 1;
 static int knDriverStick = 2;
 
-TeleopController::TeleopController(std::string strOutputFilename)
+TeleopController::TeleopController()
 {
 	// xbox controller appears as single USB joystick
 	m_pDriverStick = new Joystick(knDriverStick);
 	m_pOperatorStick = new Joystick(knOperatorStick);
 	
-	m_strOutputFilename = strOutputFilename;
-
 	m_pOutStream = 0;
 }
 
@@ -40,9 +38,9 @@ void TeleopController::Reset()
 {
 	Controller::Reset();
 	delete m_pOutStream;
-	if (0 < m_strOutputFilename.size())
+	if (0 < m_strFilename.size())
 	{
-		m_pOutStream = new std::ofstream(m_strOutputFilename.c_str());
+		m_pOutStream = new std::ofstream(m_strFilename.c_str());
 	}
 	else
 	{

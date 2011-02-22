@@ -29,6 +29,8 @@ public:
 		m_vecButtons.resize(m_nStickNumber*m_nButtonNumber);
 		
 		m_nTimeCount = 0;
+		
+		m_strFilename = "";
 	}
 	
 	//! Constructor just defined to be virtual
@@ -39,6 +41,9 @@ public:
 	{
 		m_nTimeCount = 0;
 	}
+
+	//! Set the filename
+	void SetFilename(const std::string& strFilename) {m_strFilename = strFilename;}
 	
 	//@{
 	//! Get the controller state out of the arrays
@@ -80,6 +85,9 @@ protected:
 	
 	//! The number of times update has been called
 	int m_nTimeCount;
+	
+	//! Filename to write or read for record/playback support
+	std::string m_strFilename;
 };
 
 #endif // CONTROLLER_H

@@ -26,6 +26,14 @@ const float KBot::k_negP =0.1;	// neg values = UP on our robot
 const float KBot::k_negI =0.1;
 const float KBot::k_negD =0.5;
 
+// One and two-tube scoring filenames
+std::string strScoreOne = "score_one.dat";
+std::string strScoreTwo = "score_two.dat";
+
+// Jag mode (CANJaguar::kSpeed/CANJaguar::kVoltage) and constant (150/12)
+const CANJaguar::ControlMode knDriveJaguarMode = CANJaguar::kSpeed;
+const float kfDriveJaguarConstant = 150;
+
 /*!
 The constructor builds everything
 */
@@ -35,35 +43,8 @@ KBot::KBot(void)
 	IterativeRobot::SetPeriod(1.0/kPeriodicSpeed);
 	std::cerr << "Periodic rate ="<< IterativeRobot::GetLoopsPerSec() << " loops per second." << std::endl;
 	
-	// Create a robot using standard right/left robot drive on PWMS 1, 2, 3, and #4
-	m_pRightFrontJaguar = new CANJaguar(knRightFrontJaguar, CANJaguar::kSpeed);
-	m_pRightFrontJaguar->Set(0.0f);
-	m_pLeftFrontJaguar = new CANJaguar(knLeftFrontJaguar, CANJaguar::kSpeed);
-	m_pLeftFrontJaguar->Set(0.0f);
-	m_pRightBackJaguar = new CANJaguar(knRightBackJaguar, CANJaguar::kSpeed);
-	m_pRightBackJaguar->Set(0.0f);
-	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, CANJaguar::kSpeed);
-	m_pLeftBackJaguar->Set(0.0f);
-	
-	m_pRightFrontJaguar->ConfigFaultTime(0.5f);
-	m_pLeftFrontJaguar->ConfigFaultTime(0.5f);
-	m_pRightBackJaguar->ConfigFaultTime(0.5f);
-	m_pLeftBackJaguar->ConfigFaultTime(0.5f);
-	
-	m_vecJags.push_back(m_pRightFrontJaguar);
-	m_vecJags.push_back(m_pLeftFrontJaguar);
-	m_vecJags.push_back(m_pRightBackJaguar);
-	m_vecJags.push_back(m_pLeftBackJaguar);
-	m_vecJagErrors.push_back(0);
-	m_vecJagErrors.push_back(0);
-	m_vecJagErrors.push_back(0);
-	m_vecJagErrors.push_back(0);
-	
-	// Arm actuators
-	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kVoltage);
-	//m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kPosition);
-	m_pLowerRollerJaguar = new CANJaguar(knLowerRollerJaguar, CANJaguar::kVoltage);
-	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);
+	// Build the Jags
+	BuildJags();
 	
 	// Arm PID controller:
 	m_pArmPID = new KbotPID(k_posP, 0.01, 0.0);
@@ -98,9 +79,8 @@ KBot::KBot(void)
 	m_pCompressorLimit = new DigitalInput(knCompressorLimit);
 	
 	// controllers
-	m_pTeleopController = new TeleopController("");//score1_follow.dat");
-	m_pPlaybackController = new AutonomousController(this, "score1_follow.dat");
-	m_pScoreThreeController = new ScoreThreeController(this);
+	m_pTeleopController = new TeleopController();
+	m_pPlaybackController = new AutonomousController(this);
 	
 	// gyro
 	m_pGyro = new Gyro(knAnalogSlot, knGyro);
@@ -130,8 +110,49 @@ KBot::KBot(void)
 	// retro-reflector (if we use it)
 	m_pRetroReflector = new DigitalInput(knDigitalSlot, knRetroReflector);
 	
-	// record switch for teleop
+	// switch inputs
 	m_pRecordSwitch = new DigitalInput(knDigitalSlot, knRecordSwitch);
+	m_pRecoverSwitch = new DigitalInput(knDigitalSlot, knRecoverSwitch);
+	m_pMirrorSwitch = new DigitalInput(knDigitalSlot, knMirrorSwitch);
+	m_pOneTwoTubeSwitch = new DigitalInput(knDigitalSlot, knOneTwoTubeSwitch);
+	m_pFifthSwitch = new DigitalInput(knDigitalSlot, knFifthSwitch);
+}
+
+/*!
+Function for (re)building Jags
+*/
+void KBot::BuildJags()
+{
+	// Create a robot using standard right/left robot drive on PWMS 1, 2, 3, and #4
+	m_pRightFrontJaguar = new CANJaguar(knRightFrontJaguar, knDriveJaguarMode);
+	m_pRightFrontJaguar->Set(0.0f);
+	m_pLeftFrontJaguar = new CANJaguar(knLeftFrontJaguar, knDriveJaguarMode);
+	m_pLeftFrontJaguar->Set(0.0f);
+	m_pRightBackJaguar = new CANJaguar(knRightBackJaguar, knDriveJaguarMode);
+	m_pRightBackJaguar->Set(0.0f);
+	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, knDriveJaguarMode);
+	m_pLeftBackJaguar->Set(0.0f);
+	
+	m_pRightFrontJaguar->ConfigFaultTime(0.5f);
+	m_pLeftFrontJaguar->ConfigFaultTime(0.5f);
+	m_pRightBackJaguar->ConfigFaultTime(0.5f);
+	m_pLeftBackJaguar->ConfigFaultTime(0.5f);
+	
+	m_vecJags.clear();	// throw away any old data
+	m_vecJagErrors.clear();
+	m_vecJags.push_back(m_pRightFrontJaguar);
+	m_vecJags.push_back(m_pLeftFrontJaguar);
+	m_vecJags.push_back(m_pRightBackJaguar);
+	m_vecJags.push_back(m_pLeftBackJaguar);
+	m_vecJagErrors.push_back(0);
+	m_vecJagErrors.push_back(0);
+	m_vecJagErrors.push_back(0);
+	m_vecJagErrors.push_back(0);
+	
+	// Arm actuators
+	m_pArmJaguar = new CANJaguar(knArmJaguar, CANJaguar::kVoltage);
+	m_pLowerRollerJaguar = new CANJaguar(knLowerRollerJaguar, CANJaguar::kVoltage);
+	m_pUpperRollerJaguar = new CANJaguar(knUpperRollerJaguar, CANJaguar::kVoltage);	
 }
 
 void KBot::ControlCompressor(void)
@@ -167,17 +188,102 @@ void KBot::ResetRobot(bool bRecordTeleop)
 	m_pBlueLightRelay->Set(Relay::kOff);
 	m_pRedLightRelay->Set(Relay::kOff);
 	m_pWhiteLightRelay->Set(Relay::kOff);
+
+	// handle switches
+	if (0 == m_pRecoverSwitch->Get())
+	{
+		// TODO: copy files from backups
+	}
 	
-	if (bRecordTeleop)
+	if (0 == m_pRecordSwitch->Get())	// we are recording
 	{
-		m_pTeleopController->Reset();
+		if (0 == m_pOneTwoTubeSwitch->Get())	
+		{
+			m_pTeleopController->SetFilename(strScoreOne);
+		}
+		else
+		{
+			m_pTeleopController->SetFilename(strScoreTwo);			
+		}
+		
+		if (bRecordTeleop)	// this tells use if we are opening/closing file
+		{
+			m_pTeleopController->Reset();
+		}
+		else
+		{
+			m_pTeleopController->Done();		
+		}
 	}
-	else
+	else // we are not recording
 	{
-		m_pTeleopController->Done();		
+		m_pTeleopController->SetFilename("");
+		m_pTeleopController->Reset();		
+		m_pPlaybackController->Reset();
+		
+		if (0 == m_pOneTwoTubeSwitch->Get())	
+		{
+			m_pPlaybackController->SetFilename(strScoreOne);
+		}
+		else
+		{
+			m_pPlaybackController->SetFilename(strScoreTwo);			
+		}
+		
+		if (0 == m_pMirrorSwitch->Get())	
+		{
+			m_pPlaybackController->SetMirror(true);
+		}
+		else
+		{
+			m_pPlaybackController->SetMirror(false);			
+		}
 	}
-	m_pPlaybackController->Reset();
-	m_pScoreThreeController->Reset();
+}
+
+/*!
+Initialize the jags
+ */
+void KBot::InitJags()
+{
+	m_pLeftFrontJaguar->SetSafetyEnabled(true);
+	m_pLeftBackJaguar->SetSafetyEnabled(true);
+	m_pRightFrontJaguar->SetSafetyEnabled(true);
+	m_pRightBackJaguar->SetSafetyEnabled(true);
+	m_pArmJaguar->SetSafetyEnabled(true);
+	m_pLowerRollerJaguar->SetSafetyEnabled(true);
+	m_pUpperRollerJaguar->SetSafetyEnabled(true);
+
+	m_pLeftFrontJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pLeftBackJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
+
+	m_pLowerRollerJaguar->SetPID(1.0, 0.0, 0.0);
+	m_pUpperRollerJaguar->SetPID(1.0, 0.0, 0.0);
+	
+	if (knDriveJaguarMode == CANJaguar::kSpeed)
+	{
+		m_pLeftFrontJaguar->ConfigEncoderCodesPerRev(360);
+		m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
+		m_pRightFrontJaguar->ConfigEncoderCodesPerRev(360);
+		m_pRightBackJaguar->ConfigEncoderCodesPerRev(360);
+	}	
+	m_pLeftFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pLeftBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pRightFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pRightBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pArmJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
+	m_pLowerRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	m_pUpperRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+	
+	m_pArmJaguar->EnableControl();
+	m_pLowerRollerJaguar->EnableControl();
+	m_pUpperRollerJaguar->EnableControl();	
+	m_pLeftFrontJaguar->EnableControl();//error?
+	m_pLeftBackJaguar->EnableControl();
+	m_pRightFrontJaguar->EnableControl();
+	m_pRightBackJaguar->EnableControl();
 }
 
 /*!
@@ -190,27 +296,7 @@ void KBot::RobotInit()
 
 	AnalogModule::GetInstance(knAnalogSlot)->SetSampleRate(50000); //50 * (1<<5));//sampleRate);
 
-	m_pLeftFrontJaguar->SetSafetyEnabled(true);
-	m_pLeftBackJaguar->SetSafetyEnabled(true);
-	m_pRightFrontJaguar->SetSafetyEnabled(true);
-	m_pRightBackJaguar->SetSafetyEnabled(true);
-	m_pArmJaguar->SetSafetyEnabled(true);
-	m_pLowerRollerJaguar->SetSafetyEnabled(true);
-	m_pUpperRollerJaguar->SetSafetyEnabled(true);
-	
-	m_pLeftFrontJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pLeftBackJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pRightFrontJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pRightBackJaguar->SetPID(1.0, 0.0, 0.0);
-	//m_pArmJaguar->SetPID(1100.0, 50.0, 500.0);  // d=500.0 as suggested in forums
-	//m_pArmJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pLowerRollerJaguar->SetPID(1.0, 0.0, 0.0);
-	m_pUpperRollerJaguar->SetPID(1.0, 0.0, 0.0);
-	
-	/////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////
+	InitJags();
 	
 	// Arm PID controller:
 	// First 3 parameters are positive dir (down on our robot), next 3 are negative (up)
@@ -224,28 +310,6 @@ void KBot::RobotInit()
 	m_pLinePID->setDesiredValue(0.0);
 	m_pLinePID->setMaxOutput(1.0); // Max range
 	m_pLinePID->setMinOutput(-1.0); // Max range
-	
-	m_pLeftFrontJaguar->ConfigEncoderCodesPerRev(360);
-	m_pLeftBackJaguar->ConfigEncoderCodesPerRev(360);
-	m_pRightFrontJaguar->ConfigEncoderCodesPerRev(360);
-	m_pRightBackJaguar->ConfigEncoderCodesPerRev(360);
-	//m_pArmJaguar->SetPositionReference(CANJaguar::kPosRef_Potentiometer);
-	
-	m_pLeftFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pLeftBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pRightFrontJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pRightBackJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pArmJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
-	m_pLowerRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-	m_pUpperRollerJaguar->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-			
-	m_pLeftFrontJaguar->EnableControl();//error?
-	m_pLeftBackJaguar->EnableControl();
-	m_pRightFrontJaguar->EnableControl();
-	m_pRightBackJaguar->EnableControl();
-	m_pArmJaguar->EnableControl();
-	m_pLowerRollerJaguar->EnableControl();
-	m_pUpperRollerJaguar->EnableControl();
 	
 	m_pCompressorRelay->SetDirection(Relay::kForwardOnly);
 	
@@ -274,6 +338,7 @@ void KBot::RobotInit()
 	
 	m_fLowerJawRollerSpeed = 0.0f;
 	m_fUpperJawRollerSpeed = 0.0f;
+	
 }
 
 /*!
@@ -311,6 +376,7 @@ void KBot::AutonomousInit()
 	m_pArmJaguar->SetSafetyEnabled(true);
 	m_pLowerRollerJaguar->SetSafetyEnabled(true);
 	m_pUpperRollerJaguar->SetSafetyEnabled(true);
+
 	ResetRobot();
 	
 	//Check switches and set autonomous mode
@@ -334,7 +400,8 @@ void KBot::TeleopInit()
 	m_pArmJaguar->SetSafetyEnabled(true);
 	m_pLowerRollerJaguar->SetSafetyEnabled(true);
 	m_pUpperRollerJaguar->SetSafetyEnabled(true);
-	ResetRobot(true);  // true so we get new file for recording
+
+	ResetRobot(true);  // true so we get new file for recording if we are recording
 }
 
 /********************************** Periodic Routines *************************************/
@@ -353,8 +420,8 @@ void KBot::DisabledPeriodic(void)
 		nCount = 0;
 	
 //#define CONTROLLER_DEBUG
-#define ANALOG_DEBUG
-//#define DIGITAL_DEBUG
+//#define ANALOG_DEBUG
+#define DIGITAL_DEBUG
 #ifdef CONTROLLER_DEBUG
 		m_pTeleopController->Update();
 		const std::vector<int>& vecButtons = m_pTeleopController->GetButtons();
@@ -414,14 +481,52 @@ void KBot::AutonomousPeriodic(void)
 {
 	GetWatchdog().Feed();
 	
-	if (m_autoMode==0)
-	{
-		RunRobot(m_pPlaybackController);
-	}
-	else if (m_autoMode == 1)
-	{
-		RunRobot(m_pScoreThreeController);
-	}
+	RunRobot(m_pPlaybackController);
+}
+
+/*!
+Delete and reconstruct the Jags as an insanely hard reset
+
+DO NOT CALL THIS IS CRASHES THE PROGRAM
+*/
+void KBot::ResetJags()
+{
+	GetWatchdog().SetEnabled(false);
+	m_pLeftFrontJaguar->SetSafetyEnabled(false);
+	m_pLeftBackJaguar->SetSafetyEnabled(false);
+	m_pRightFrontJaguar->SetSafetyEnabled(false);
+	m_pRightBackJaguar->SetSafetyEnabled(false);
+	m_pArmJaguar->SetSafetyEnabled(false);
+	m_pLowerRollerJaguar->SetSafetyEnabled(false);
+	m_pUpperRollerJaguar->SetSafetyEnabled(false);
+	
+	m_pLeftFrontJaguar->DisableControl();//error?
+	m_pLeftBackJaguar->DisableControl();
+	m_pRightFrontJaguar->DisableControl();
+	m_pRightBackJaguar->DisableControl();
+	m_pArmJaguar->DisableControl();
+	m_pLowerRollerJaguar->DisableControl();
+	m_pUpperRollerJaguar->DisableControl();	
+	
+	delete m_pLeftFrontJaguar;
+	delete m_pRightFrontJaguar;
+	delete m_pLeftBackJaguar;
+	delete m_pRightBackJaguar;
+	delete m_pArmJaguar;
+	delete m_pUpperRollerJaguar;
+	delete m_pLowerRollerJaguar;
+
+	BuildJags();
+	InitJags();
+	
+	GetWatchdog().SetEnabled(false);
+	m_pLeftFrontJaguar->SetSafetyEnabled(true);
+	m_pLeftBackJaguar->SetSafetyEnabled(true);
+	m_pRightFrontJaguar->SetSafetyEnabled(true);
+	m_pRightBackJaguar->SetSafetyEnabled(true);
+	m_pArmJaguar->SetSafetyEnabled(true);
+	m_pLowerRollerJaguar->SetSafetyEnabled(true);
+	m_pUpperRollerJaguar->SetSafetyEnabled(true);
 }
 
 /**
@@ -432,12 +537,19 @@ void KBot::TeleopPeriodic(void)
 	//std::cerr << "operator control" << std::endl;
 	GetWatchdog().Feed();
 	
+	
+	if (false) //m_pTeleopController->GetButton(knResetJagsButton))
+	{
+		ResetJags();
+	}
+	
 	RunRobot(m_pTeleopController);
 
-	bool bNewErrors = false;
+	/*bool bNewErrors = false;
 	for(unsigned int nIndex = 0; nIndex < m_vecJags.size(); ++nIndex)
 	{
 		int nError = m_vecJags[nIndex]->GetFaults();
+		
 		if (nError != m_vecJagErrors[nIndex])
 		{
 			std::cerr << nIndex+1 << " " << nError << " | ";
@@ -448,16 +560,16 @@ void KBot::TeleopPeriodic(void)
 	if (bNewErrors)	// newline if we have seen new errorss
 	{
 		std::cerr << std::endl;
-	}
+	}*/
 	
 	static int nCount = 0;	
 	if (nCount == 50)  // once per second
 	{
-		if (0 != m_pLeftFrontJaguar->GetFaults() + m_pRightFrontJaguar->GetFaults() + m_pLeftBackJaguar->GetFaults() + m_pRightBackJaguar->GetFaults() + m_pArmJaguar->GetFaults() + m_pUpperRollerJaguar->GetFaults() + m_pLowerRollerJaguar->GetFaults() )
+		/*if (0 != m_pLeftFrontJaguar->GetFaults() + m_pRightFrontJaguar->GetFaults() + m_pLeftBackJaguar->GetFaults() + m_pRightBackJaguar->GetFaults() + m_pArmJaguar->GetFaults() + m_pUpperRollerJaguar->GetFaults() + m_pLowerRollerJaguar->GetFaults() )
 		{
 			std::cerr << m_pLeftFrontJaguar->GetFaults() << " " << m_pRightFrontJaguar->GetFaults() << " " << m_pLeftBackJaguar->GetFaults() << " " << m_pRightBackJaguar->GetFaults() << " " << m_pArmJaguar->GetFaults() << " " << m_pUpperRollerJaguar->GetFaults() << " " << m_pLowerRollerJaguar->GetFaults() << " " <<std::endl; 
-		}
-		std::cerr << m_pLeftFrontJaguar->GetBusVoltage() << " " << m_pRightFrontJaguar->GetBusVoltage() << " " << m_pLeftBackJaguar->GetBusVoltage() << " " << m_pRightBackJaguar->GetBusVoltage() << " " << m_pArmJaguar->GetBusVoltage() << " " << m_pUpperRollerJaguar->GetBusVoltage() << " " << m_pLowerRollerJaguar->GetBusVoltage() << " " <<std::endl; 
+		}*/
+		//std::cerr << m_pLeftFrontJaguar->GetBusVoltage() << " " << m_pRightFrontJaguar->GetBusVoltage() << " " << m_pLeftBackJaguar->GetBusVoltage() << " " << m_pRightBackJaguar->GetBusVoltage() << " " << m_pArmJaguar->GetBusVoltage() << " " << m_pUpperRollerJaguar->GetBusVoltage() << " " << m_pLowerRollerJaguar->GetBusVoltage() << " " <<std::endl; 
 
 		nCount = 0;
 		//std::cerr << m_pLeftFrontJaguar->GetTemperature() << " " << m_pRightFrontJaguar->GetTemperature() << " " << m_pLeftBackJaguar->GetTemperature() << " " << m_pRightBackJaguar->GetTemperature() << " " << m_pArmJaguar->GetTemperature() << " " << m_pUpperRollerJaguar->GetTemperature() << " " << m_pLowerRollerJaguar->GetTemperature() << " " <<std::endl; 
@@ -471,7 +583,7 @@ void KBot::TeleopPeriodic(void)
 /*!
 Update extended IO module of driver-station.  Currently does nothing.
 */
-void KBot::UpdateDriverStation()
+/*void KBot::UpdateDriverStation()
 {
 	try
 	{
@@ -484,7 +596,7 @@ void KBot::UpdateDriverStation()
 	{
 		// do nothing... just in case we throw when not connected etc
 	}
-}
+}*/
 
 void KBot::RunRobot(Controller* pController)
 {
@@ -494,7 +606,7 @@ void KBot::RunRobot(Controller* pController)
 	ComputeWeights(pController);	// compute the weights for each input
 	UpdateActuators();		// set the motor and actuator states
 	ControlCompressor();	// manage the compressor state based on switch state
-	UpdateDriverStation();	// update the driver station 
+	//UpdateDriverStation();	// update the driver station 
 }
 
 /*!
@@ -569,7 +681,10 @@ void KBot::ReadSensors()
 	m_mapDigitalSensors[knTubeRight] = m_pTubeRight->Get();
 	m_mapDigitalSensors[knCompressorLimit] = m_pCompressorLimit->Get();
 	m_mapDigitalSensors[knRecordSwitch] = m_pRecordSwitch->Get();
-	
+	m_mapDigitalSensors[knOneTwoTubeSwitch] = m_pOneTwoTubeSwitch->Get();
+	m_mapDigitalSensors[knMirrorSwitch] = m_pMirrorSwitch->Get();
+	m_mapDigitalSensors[knRecoverSwitch] = m_pRecoverSwitch->Get();
+	m_mapDigitalSensors[knFifthSwitch] = m_pFifthSwitch->Get();	
 }
 
 /*!
@@ -586,15 +701,15 @@ void KBot::ComputeLights(Controller* pController)
 {
 	if (pController->GetButton(knRedTubeButton))
 	{
-		m_nLightState = knRedLightRelay;
+		m_nLightState = knRedLight;
 	}
 	else if (pController->GetButton(knBlueTubeButton))
 	{
-		m_nLightState = knBlueLightRelay;
+		m_nLightState = knBlueLight;
 	}
 	else if (pController->GetButton(knWhiteTubeButton))
 	{
-		m_nLightState = knWhiteLightRelay;
+		m_nLightState = knWhiteLight;
 	}
 	else if (pController->GetButton(knAllLightsButton))
 	{
@@ -664,14 +779,14 @@ void KBot::ComputeLineAndWallXYR()
 	{
 		fSignal -= 1;		
 	}
-	m_mapR[knLineFollowing] = -2000*m_mapY[knDriverInput]*kfRotationFactor*fSignal;
+	m_mapR[knLineFollowing] = -2000*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
 
-	bool bOnCrossbar = false;
 	if ((0 == m_mapDigitalSensors[knLineRight]) && (0 == m_mapDigitalSensors[knLineLeft]))
 	{
-		bOnCrossbar = true;
+		m_mapY[knLineFollowing] = 0;
 	}
-	
+
+#ifdef NOT_NOW
 	float fRightWallDistance = m_mapAnalogSensors[knRightIRSensor];
 	float fLeftWallDistance = m_mapAnalogSensors[knLeftIRSensor];
 	float fLowerDistance = (fRightWallDistance<fLeftWallDistance)?fRightWallDistance:fLeftWallDistance;
@@ -682,18 +797,16 @@ void KBot::ComputeLineAndWallXYR()
 	m_mapR[knWallAlign] = 0;
 	if (fLowerDistance < fMaxDistance)
 	{
-		if (bOnCrossbar)	// within max distance and on crossbar so stop
-		{
-			m_mapY[knLineFollowing] = 0.0f;			
-		}
-		
 		// effectively subract off some portion of the approach velocity
-		m_mapY[knWallAlign] = -0.75*fLineFollowingSpeed*(fMaxDistance-fLowerDistance)/(fMaxDistance-fMinDistance);
+		m_mapY[knWallAlign] = -0.75*m_mapY[knLineFollowing]*(fMaxDistance-fLowerDistance)/(fMaxDistance-fMinDistance);
 	}
 	else if (fLowerDistance < fMinDistance)
 	{
-		m_mapY[knWallAlign] = -fLineFollowingSpeed;
+		m_mapY[knLineFollowing] = 0;
+		m_mapY[knWallAlign] = 0;
 	}
+#endif
+	
 }
 
 /*!
@@ -905,15 +1018,21 @@ void KBot::UpdateMotors()
 	++nCount;
 	
 	// actually set speeds (negate right side due to motor mounting)
-	UINT8 syncGroup = 0x80;	
-	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*150.0 , syncGroup);
-	m_pRightFrontJaguar->Set(-wheelSpeeds[1]*150.0 , syncGroup);
-	m_pRightBackJaguar->Set(-wheelSpeeds[2]*150.0, syncGroup);
-	m_pLeftBackJaguar->Set(wheelSpeeds[3]*150.0 , syncGroup);
-	m_pLowerRollerJaguar->Set(10*m_fLowerJawRollerSpeed , syncGroup);
-	m_pUpperRollerJaguar->Set(10*m_fUpperJawRollerSpeed , syncGroup);
-	m_pArmJaguar->Set(m_fArmSpeed, syncGroup);
-	CANJaguar::UpdateSyncGroup(syncGroup);
+	//UINT8 syncGroup = 0x80;	
+	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*kfDriveJaguarConstant);// , syncGroup);
+	Wait(0.001);
+	m_pRightFrontJaguar->Set(-wheelSpeeds[1]*kfDriveJaguarConstant);// , syncGroup);
+	Wait(0.001);
+	m_pRightBackJaguar->Set(-wheelSpeeds[2]*kfDriveJaguarConstant);//, syncGroup);
+	Wait(0.001);
+	m_pLeftBackJaguar->Set(wheelSpeeds[3]*kfDriveJaguarConstant);// , syncGroup);
+	Wait(0.001);
+	m_pLowerRollerJaguar->Set(10*m_fLowerJawRollerSpeed);// , syncGroup);
+	Wait(0.001);
+	m_pUpperRollerJaguar->Set(10*m_fUpperJawRollerSpeed);// , syncGroup);
+	Wait(0.001);
+	m_pArmJaguar->Set(m_fArmSpeed);//, syncGroup);
+	//CANJaguar::UpdateSyncGroup(syncGroup);	
 }
 
 void KBot::UpdateWrist()
@@ -975,19 +1094,19 @@ void KBot::UpdateLights()
 		m_pBlueLightRelay->Set(Relay::kOff);
 		m_pWhiteLightRelay->Set(Relay::kOff);
 	}
-	else if (knRedLightRelay == m_nLightState)
+	else if (knRedLight == m_nLightState)
 	{
 		m_pRedLightRelay->Set(Relay::kForward);
 		m_pBlueLightRelay->Set(Relay::kOff);
 		m_pWhiteLightRelay->Set(Relay::kOff);
 	}
-	else if (knBlueLightRelay == m_nLightState)
+	else if (knBlueLight == m_nLightState)
 	{
 		m_pRedLightRelay->Set(Relay::kOff);
 		m_pBlueLightRelay->Set(Relay::kForward);
 		m_pWhiteLightRelay->Set(Relay::kOff);
 	}
-	else if (knWhiteLightRelay == m_nLightState)
+	else if (knWhiteLight == m_nLightState)
 	{
 		m_pRedLightRelay->Set(Relay::kOff);
 		m_pBlueLightRelay->Set(Relay::kOff);
