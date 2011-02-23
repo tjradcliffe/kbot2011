@@ -50,8 +50,10 @@ KBot::KBot(void)
 	// Build the Jags
 	BuildJags();
 	
+#ifdef PID_ARM
 	// Arm PID controller:
 	m_pArmPID = new KbotPID(k_posP, 0.01, 0.0);
+#endif
 
 	// Line following PID
 	m_pLinePID = new KbotPID(1.0, 0.0, 2.0);
@@ -307,6 +309,7 @@ void KBot::RobotInit()
 
 	InitJags();
 	
+#ifdef PID_ARM
 	// Arm PID controller:
 	// First 3 parameters are positive dir (down on our robot), next 3 are negative (up)
 	m_pArmPID->setAsymmetricPID(k_posP, k_posI, k_posD,  k_negP, k_negI, k_negD);
@@ -315,6 +318,7 @@ void KBot::RobotInit()
 	m_pArmPID->setMaxOutput(1.0); // Max range
 	m_pArmPID->setMinOutput(-1.0); // Max range
 	m_pArmPID->setDeadBand(0.4); // about +=2.4V
+#endif
 	
 	m_pLinePID->setDesiredValue(0.0);
 	m_pLinePID->setMaxOutput(1.0); // Max range
@@ -357,9 +361,11 @@ Called at start of disabled
 void KBot::DisabledInit() 
 {
 	// do NOT reset robot here!
+#ifdef PID_ARM
 	delete m_pArmPID; // Force save of data file
 	m_pArmPID = 0;
-
+#endif
+	
 	GetWatchdog().SetEnabled(false);
 	m_pLeftFrontJaguar->SetSafetyEnabled(false);
 	m_pLeftBackJaguar->SetSafetyEnabled(false);
@@ -375,10 +381,12 @@ Called at start of autonomous
 */
 void KBot::AutonomousInit() 
 {
+#ifdef PID_ARM
 	delete m_pArmPID; // Force save of data file and re-create
 	m_pArmPID = new KbotPID(0.0, 0.0, 0.0);
 	m_pArmPID->setAsymmetricPID(k_posP, k_posI, k_posD,  k_negP, k_negI, k_negD);
-
+#endif
+	
 	m_pLeftFrontJaguar->SetSafetyEnabled(true);
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
 	m_pRightFrontJaguar->SetSafetyEnabled(true);
@@ -399,10 +407,12 @@ here, so a full reset may not be what we need.
 */
 void KBot::TeleopInit() 
 {
+#ifdef PID_ARM
 	delete m_pArmPID; // Force save of data file and re-create
 	m_pArmPID = new KbotPID(0.0, 0.0, 0.0);
 	m_pArmPID->setAsymmetricPID(k_posP, k_posI, k_posD,  k_negP, k_negI, k_negD);
-
+#endif
+	
 	m_pLeftFrontJaguar->SetSafetyEnabled(true);
 	m_pLeftBackJaguar->SetSafetyEnabled(true);
 	m_pRightFrontJaguar->SetSafetyEnabled(true);
@@ -892,8 +902,10 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		}
 		else	// no joystick signal, let PID do its thing
 		{
+#ifdef PID_ARM
 			m_pArmPID->setDesiredValue(m_fTargetArmAngle);
-			m_fArmSpeed = 12*m_pArmPID->calcPID(m_mapAnalogSensors[knArmAngle]);			
+			m_fArmSpeed = 12*m_pArmPID->calcPID(m_mapAnalogSensors[knArmAngle]);
+#endif
 		}
 
 		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);

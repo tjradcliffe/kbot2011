@@ -1,6 +1,10 @@
 #ifndef KBOT_H
 #define KBOT_H
 
+
+#define PID_ARM
+
+
 // local includes
 #include "mappings.h"
 
@@ -19,6 +23,7 @@ class Controller;
 class DistanceSensor;
 class ScoreThreeController;
 class TeleopController;
+
 class KbotPID;
 
 /*!
@@ -173,8 +178,10 @@ protected:
 	float m_fTargetArmAngle;
 	float m_fArmSpeed;
 	
+#ifdef PID_ARM
 	// Arm PID
 	KbotPID *m_pArmPID;
+#endif
 	
 	// Line following PID
 	KbotPID *m_pLinePID;
