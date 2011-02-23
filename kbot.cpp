@@ -11,7 +11,11 @@
 #include "KbotPID.h"
 
 // FRC includes
-//#include "I2C.h"
+
+//#define USE_I2C
+#ifdef USE_I2C
+#include "I2C.h"
+#endif
 
 // standard includes
 #include <numeric>
@@ -52,7 +56,10 @@ KBot::KBot(void)
 	// Line following PID
 	m_pLinePID = new KbotPID(1.0, 0.0, 2.0);
 	m_nLineCount = 0;
-
+	
+	// for stopping on line
+	m_nStoppedCount = -1;
+	
 	// Arm angle potentiometer
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
 
@@ -90,8 +97,10 @@ KBot::KBot(void)
 	//m_pAccelerometer = new ADXL345_I2C(knDigitalSlot, ADXL345_I2C::kRange_2G);
 	
 	// ultrasounds
-	//m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
-	//m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
+#ifdef USE_I2C
+	m_pLeftUltrasound = new I2C_Ultrasound(knLeftUltrasound);
+	m_pRightUltrasound = new I2C_Ultrasound(knRightUltrasound);
+#endif
 	
 	// analog distance sensors
 	m_pLeftIRSensor = new DistanceSensor(knLeftIRSensor);
@@ -316,16 +325,18 @@ void KBot::RobotInit()
 	m_pGyro->Reset();
 	m_pGyro->SetSensitivity(0.007); // 7 mV/deg/s
 	m_mapAnalogSensors[knGyro] = m_pGyro->GetAngle();
-	
-	//m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
-	//m_pLeftUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
-	//m_pRightUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
-	//m_pRightUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
+
+#ifdef USE_I2C
+	m_pLeftUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
+	m_pLeftUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
+	m_pRightUltrasound->SetRange(I2C_Ultrasound::kMaxRange);
+	m_pRightUltrasound->SetMaxGain(I2C_Ultrasound::kSetGain350);
 	
 	// Reprogram Ultrasound's I2C address:
 	//   Create the Ultrasound with an address of E0 (for an unprogrammed Ultrasound)
 	//   then call this method to reprogram it.
 	//m_pUltrasound->SetI2CAddress(0xe2);
+#endif
 	
 	m_pLeftIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
 	m_pRightIRSensor->SetBestFitParameters(DistanceSensor::kAIRRSv2Exponent, DistanceSensor::kAIRRSv2Multiplier);
@@ -338,7 +349,6 @@ void KBot::RobotInit()
 	
 	m_fLowerJawRollerSpeed = 0.0f;
 	m_fUpperJawRollerSpeed = 0.0f;
-	
 }
 
 /*!
@@ -421,7 +431,7 @@ void KBot::DisabledPeriodic(void)
 	
 //#define CONTROLLER_DEBUG
 //#define ANALOG_DEBUG
-#define DIGITAL_DEBUG
+//#define DIGITAL_DEBUG
 #ifdef CONTROLLER_DEBUG
 		m_pTeleopController->Update();
 		const std::vector<int>& vecButtons = m_pTeleopController->GetButtons();
@@ -484,51 +494,6 @@ void KBot::AutonomousPeriodic(void)
 	RunRobot(m_pPlaybackController);
 }
 
-/*!
-Delete and reconstruct the Jags as an insanely hard reset
-
-DO NOT CALL THIS IS CRASHES THE PROGRAM
-*/
-void KBot::ResetJags()
-{
-	GetWatchdog().SetEnabled(false);
-	m_pLeftFrontJaguar->SetSafetyEnabled(false);
-	m_pLeftBackJaguar->SetSafetyEnabled(false);
-	m_pRightFrontJaguar->SetSafetyEnabled(false);
-	m_pRightBackJaguar->SetSafetyEnabled(false);
-	m_pArmJaguar->SetSafetyEnabled(false);
-	m_pLowerRollerJaguar->SetSafetyEnabled(false);
-	m_pUpperRollerJaguar->SetSafetyEnabled(false);
-	
-	m_pLeftFrontJaguar->DisableControl();//error?
-	m_pLeftBackJaguar->DisableControl();
-	m_pRightFrontJaguar->DisableControl();
-	m_pRightBackJaguar->DisableControl();
-	m_pArmJaguar->DisableControl();
-	m_pLowerRollerJaguar->DisableControl();
-	m_pUpperRollerJaguar->DisableControl();	
-	
-	delete m_pLeftFrontJaguar;
-	delete m_pRightFrontJaguar;
-	delete m_pLeftBackJaguar;
-	delete m_pRightBackJaguar;
-	delete m_pArmJaguar;
-	delete m_pUpperRollerJaguar;
-	delete m_pLowerRollerJaguar;
-
-	BuildJags();
-	InitJags();
-	
-	GetWatchdog().SetEnabled(false);
-	m_pLeftFrontJaguar->SetSafetyEnabled(true);
-	m_pLeftBackJaguar->SetSafetyEnabled(true);
-	m_pRightFrontJaguar->SetSafetyEnabled(true);
-	m_pRightBackJaguar->SetSafetyEnabled(true);
-	m_pArmJaguar->SetSafetyEnabled(true);
-	m_pLowerRollerJaguar->SetSafetyEnabled(true);
-	m_pUpperRollerJaguar->SetSafetyEnabled(true);
-}
-
 /**
  Called on a clock during teleop
  */
@@ -536,12 +501,6 @@ void KBot::TeleopPeriodic(void)
 {
 	//std::cerr << "operator control" << std::endl;
 	GetWatchdog().Feed();
-	
-	
-	if (false) //m_pTeleopController->GetButton(knResetJagsButton))
-	{
-		ResetJags();
-	}
 	
 	RunRobot(m_pTeleopController);
 
@@ -614,7 +573,8 @@ Read or ping the ultrasounds, depending on where we are
 in an internal loop.  They are pinged at different times,
 which may create issues with the control logic.
 */
-/*void KBot::ReadUltrasoundSensors()
+#ifdef USE_I2C
+void KBot::ReadUltrasoundSensors()
 {
 	static int nUltrasoundCount = 0;
 	
@@ -641,8 +601,8 @@ which may create issues with the control logic.
 		}
 	}
 	++nUltrasoundCount;
-	
-}*/
+}
+#endif
 
 /*!
 Read all the sensors, at least conceptually.  Some of them,
@@ -661,16 +621,20 @@ void KBot::ReadSensors()
 	m_mapAnalogSensors[knLeftIRSensor] = m_pLeftIRSensor->GetDistance();
 	m_mapAnalogSensors[knRightIRSensor] = m_pRightIRSensor->GetDistance()-12.0f;
 	
-	//ReadUltrasoundSensors();	// put ping logic in its own method
+#ifdef USE_I2C
+	ReadUltrasoundSensors();	// put ping logic in its own method
+#endif
 	
 	m_mapAnalogSensors[knArmAngle] = m_pArmAngle->GetValue();
 	m_mapAnalogSensors[knTubeIR] = m_pTubeIR->GetValue();
 	
-	//ADXL345_I2C::AllAxes accelerations = m_pAccelerometer->GetAccelerations();
-	//m_mapAnalogSensors[knAccelerationX] = accelerations.XAxis;
-	//m_mapAnalogSensors[knAccelerationY] = accelerations.YAxis;
-	//m_mapAnalogSensors[knAccelerationZ] = accelerations.ZAxis;
-
+#ifdef USE_I2C
+	ADXL345_I2C::AllAxes accelerations = m_pAccelerometer->GetAccelerations();
+	m_mapAnalogSensors[knAccelerationX] = accelerations.XAxis;
+	m_mapAnalogSensors[knAccelerationY] = accelerations.YAxis;
+	m_mapAnalogSensors[knAccelerationZ] = accelerations.ZAxis;
+#endif
+	
 	//*********DIGITAL SENSORS************
 	
 	m_mapDigitalSensors[knLineRight] = m_pLineRight->Get();
@@ -761,7 +725,7 @@ Compute the rotation we want based on line following
 void KBot::ComputeLineAndWallXYR()
 {
 	static float fLineFollowingStartSpeed = 1.0f;
-	static float fLineFollowingMinSpeed = 0.25f;
+	static float fLineFollowingMinSpeed = 0.35f;
 	static int nMaxCount = 50;
 	
 	float fLineFollowingSpeed = fLineFollowingStartSpeed*(nMaxCount-m_nLineCount)/nMaxCount;
@@ -779,11 +743,22 @@ void KBot::ComputeLineAndWallXYR()
 	{
 		fSignal -= 1;		
 	}
-	m_mapR[knLineFollowing] = -2000*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
+	m_mapR[knLineFollowing] = -50*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
 
-	if ((0 == m_mapDigitalSensors[knLineRight]) && (0 == m_mapDigitalSensors[knLineLeft]))
+	static int knMaxStopped = 25;
+	if ((0 == m_mapDigitalSensors[knLineRight]) && (0 == m_mapDigitalSensors[knLineLeft]) && (m_nStoppedCount < knMaxStopped))
 	{
-		m_mapY[knLineFollowing] = 0;
+		++m_nStoppedCount;
+		m_mapY[knLineFollowing] = -0.85f; // little bit backward
+	}
+	else if ((m_nStoppedCount > 0) && (m_nStoppedCount < knMaxStopped))
+	{
+		++m_nStoppedCount;
+		m_mapY[knLineFollowing] = -0.85f; // little bit backward		
+	}
+	else if (m_nStoppedCount >= knMaxStopped)
+	{
+		m_mapY[knLineFollowing] = 0.0f; // STOP			
 	}
 
 #ifdef NOT_NOW
@@ -958,6 +933,12 @@ void KBot::ComputeWeights(Controller* pController)
 	m_mapWeightX[knWallAlign] = 0.0f; // assume no input from wall
 	m_mapWeightY[knWallAlign] = 0.0f;
 	m_mapWeightR[knWallAlign] = 0.0f;
+
+	// re-init stopped count so we can use line follow again
+	if (!pController->GetButton(knLineFollowButton))
+	{
+		m_nStoppedCount = -1;
+	}
 	
 	if (fabs(m_mapR[knDriverInput]) > 0.1f)	// let stick have control
 	{
@@ -965,10 +946,14 @@ void KBot::ComputeWeights(Controller* pController)
 	}
 	else if (pController->GetButton(knLineFollowButton))
 	{
+		if (-1 == m_nStoppedCount)
+		{
+			m_nStoppedCount = 0;
+		}
 		m_mapWeightR[knLineFollowing] = 1.0f;	// consider line rotation
 		m_mapWeightY[knLineFollowing] = 1.0f;
-		m_mapWeightR[knWallAlign] = 0.5f;	// Consider wall rotation
-		m_mapWeightY[knWallAlign] = 1.0f;	// let wall reduce speed
+		m_mapWeightR[knWallAlign] = 0.0f;	// Consider wall rotation
+		m_mapWeightY[knWallAlign] = 0.0f;	// let wall reduce speed
 		m_mapWeightR[knDriverInput] = 0.0f;	// ignore driver rotation	
 		m_mapWeightY[knDriverInput] = 0.0f;	// ignore stick
 	}
@@ -1009,14 +994,6 @@ void KBot::UpdateMotors()
 	
 	DeadbandNormalize(wheelSpeeds);
 
-	static int nCount = 0;
-	if (nCount > 10)
-	{
-//		std::cerr << m_mapAnalogSensors[knLeftIRSensor] << " " << m_mapAnalogSensors[knRightIRSensor]  << std::endl;
-		nCount = 0;
-	}
-	++nCount;
-	
 	// actually set speeds (negate right side due to motor mounting)
 	//UINT8 syncGroup = 0x80;	
 	m_pLeftFrontJaguar->Set(wheelSpeeds[0]*kfDriveJaguarConstant);// , syncGroup);

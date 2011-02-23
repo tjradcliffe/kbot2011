@@ -63,7 +63,7 @@ const int knRedTubeButton = 1;		// Red B button
 const int knBlueTubeButton = 2;		// Blue X button
 const int knWhiteTubeButton = 3;	// Yellow Y button
 const int knLineFollowButton = 4;	// Left front button
-const int knResetJagsButton = 5;	// Right front button
+const int knStandardTurnButton = 5;	// Right front button
 const int knDeployerOutButton = 7;	// Right little button
 
 const int knAutoScoreAxis = 9;	// Left D-button on Logitech
@@ -169,18 +169,20 @@ enum AnalogMapping
 //! The digital sensor mappings
 enum DigitalMapping
 {
-	knCompressorLimit = 1,
-	knTubeRight = 2,	// CHECKED (0 = tube)
-	knTubeLeft = 3,		// CHECKED (0 = tube)
-	knLineRight = 6,  // CHECKED (0 = line)
-	knLineLeft = 5,   // CHECKED (0 = line)
-	knLineBack = 4,   // CHECKED (0 = line)
-	knRetroReflector = 7, // CHECKED (0 = present)
-	knRecordSwitch = 8,			// 0 (light) is playback, 1 is record
-	knOneTwoTubeSwitch = 9,		// 0 (light) is one tube, 1 is two tubes
-	knMirrorSwitch = 10,		// 0 (light) is right of field (mirrored), 1 is left (unmirrored)	
-	knRecoverSwitch = 11,		// (not implemented) 1 is recover all recorded files from playback
-	knFifthSwitch = 12,			// "What is this quintesence of switch?"
+	knCompressorLimit = 2,
+
+	knRecordSwitch = 8,	    // TOP--CHECKED 0 (light) is playback, 1 is record
+	knOneTwoTubeSwitch = 3,	// 2nd--CHECKED 0 (light) is one tube, 1 is two tubes
+	knMirrorSwitch = 4,		// 3rd--CHECKED 0 (light) is right of field (mirrored), 1 is left (unmirrored)	
+	knRecoverSwitch = 13,	// 4th--0 is recover all recorded files from playback
+	knFifthSwitch = 14,	    // 5th--"What is this quintesence of switch?"
+
+	knRetroReflector = 5, 	// (not implemented) (0 = present)
+	knTubeLeft = 6,		// CHECKED (0 = tube)
+	knTubeRight = 7,	// CHECKED (0 = tube)
+	knLineBack = 10,   // (not implemented) (0 = line) 12 V
+	knLineLeft = 11,   // (CHECKED) (0 = line)  12 V
+	knLineRight = 12,  // (CHECKED) (0 = line)  12 V
 };
 
 //! The calculation mappings

@@ -203,7 +203,6 @@ protected:
 
 	///*************ACTUATORS******************
 
-	void ResetJags();  // DO NOT CALL!!! CRASHES MotorSafetyHelper
 	void BuildJags();
 	void InitJags();
 	
@@ -238,6 +237,9 @@ protected:
 	// I2C ultrasound sensors
 	//I2C_Ultrasound* m_pLeftUltrasound;
 	//I2C_Ultrasound* m_pRightUltrasound;
+	
+	// Stopped count on line
+	int m_nStoppedCount;
 	
 	// Analog distance sensors
 	DistanceSensor* m_pLeftIRSensor;
