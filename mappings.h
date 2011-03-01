@@ -68,6 +68,8 @@ const int knDeployerOutButton = 7;	// Right little button
 
 const int knAutoScoreAxis = 9;	// Left D-button on Logitech
 
+const int knRecordOverride = 18;	// button 9 on operator controller
+
 //! Axis mappings
 const int knX = 0;
 const int knY = 1;

@@ -55,6 +55,10 @@ KBot::KBot(void)
 	m_pArmPID = new KbotPID(k_posP, 0.01, 0.0);
 #endif
 
+	// do not over-ride record button by default
+	m_bRecordOverride = false;
+	m_bPreviousOverride = false;
+	
 	// Line following PID
 	m_pLinePID = new KbotPID(1.0, 0.0, 2.0);
 	m_nLineCount = 0;
@@ -144,6 +148,7 @@ void KBot::BuildJags()
 	m_pLeftBackJaguar = new CANJaguar(knLeftBackJaguar, knDriveJaguarMode);
 	m_pLeftBackJaguar->Set(0.0f);
 	
+	// Time in seconds for Jag to reset after a fault.  0.5 is as low as possible.
 	m_pRightFrontJaguar->ConfigFaultTime(0.5f);
 	m_pLeftFrontJaguar->ConfigFaultTime(0.5f);
 	m_pRightBackJaguar->ConfigFaultTime(0.5f);
@@ -206,7 +211,7 @@ void KBot::ResetRobot(bool bRecordTeleop)
 		// TODO: copy files from backups
 	}
 	
-	if (0 == m_pRecordSwitch->Get())	// we are recording
+	if ((0 == m_pRecordSwitch->Get()) || m_bRecordOverride)	// we are recording
 	{
 		if (0 == m_pOneTwoTubeSwitch->Get())	
 		{
@@ -223,7 +228,8 @@ void KBot::ResetRobot(bool bRecordTeleop)
 		}
 		else
 		{
-			m_pTeleopController->Done();		
+			m_pTeleopController->Done();
+			m_bRecordOverride = false;	// no longer recording
 		}
 	}
 	else // we are not recording
@@ -420,7 +426,7 @@ void KBot::TeleopInit()
 	m_pArmJaguar->SetSafetyEnabled(true);
 	m_pLowerRollerJaguar->SetSafetyEnabled(true);
 	m_pUpperRollerJaguar->SetSafetyEnabled(true);
-
+	
 	ResetRobot(true);  // true so we get new file for recording if we are recording
 }
 
@@ -435,6 +441,18 @@ void KBot::DisabledPeriodic(void)
 
 	ReadSensors();	// fill sensor arrays
 
+	m_pTeleopController->Update();
+	if (m_pTeleopController->GetButton(knRecordOverride) && !m_bPreviousOverride)
+	{
+		m_bPreviousOverride = true;
+		m_bRecordOverride = !m_bRecordOverride;
+	}
+	else
+	{
+		m_bPreviousOverride = false;		
+	}
+	UpdateDriverStation();	// will show line sensors as well
+	
 	if (nCount == 100)  // once per two seconds
 	{
 		nCount = 0;
@@ -552,20 +570,36 @@ void KBot::TeleopPeriodic(void)
 /*!
 Update extended IO module of driver-station.  Currently does nothing.
 */
-/*void KBot::UpdateDriverStation()
+void KBot::UpdateDriverStation()
 {
 	try
 	{
 		DriverStationEnhancedIO& dseio = DriverStation::GetInstance()->GetEnhancedIO();
 		dseio.GetDigitalConfig(1);
+
+		unsigned char nBitMask = 0;
+		if (0 == m_mapDigitalSensors[knLineRight])
+		{
+			nBitMask += 1 << 7;
+		}
+		if (0 == m_mapDigitalSensors[knLineLeft])
+		{
+			nBitMask += 1;
+		}
 		
-		dseio.SetLEDs(255);  // led bitmask
+		if (m_bRecordOverride)	// make a pair of lights to be obvious
+		{
+			nBitMask += 1 << 3;
+			nBitMask += 1 << 4;
+		}
+		
+		dseio.SetLEDs(nBitMask);  // led bitmask
 	}
 	catch(...)
 	{
 		// do nothing... just in case we throw when not connected etc
 	}
-}*/
+}
 
 void KBot::RunRobot(Controller* pController)
 {
@@ -575,7 +609,7 @@ void KBot::RunRobot(Controller* pController)
 	ComputeWeights(pController);	// compute the weights for each input
 	UpdateActuators();		// set the motor and actuator states
 	ControlCompressor();	// manage the compressor state based on switch state
-	//UpdateDriverStation();	// update the driver station 
+	UpdateDriverStation();	// update the driver station 
 }
 
 /*!
@@ -734,9 +768,12 @@ Compute the rotation we want based on line following
 */
 void KBot::ComputeLineAndWallXYR()
 {
-	static float fLineFollowingStartSpeed = 1.0f;
-	static float fLineFollowingMinSpeed = 0.35f;
-	static int nMaxCount = 50;
+	static float fLineFollowingStartSpeed = 1.0f;	// speed we start at
+	static float fLineFollowingMinSpeed = 0.35f;	// speed we ramp down to
+	static int nMaxCount = 50;		// counts we ramp down over
+	static int nMaxStopped = 25;		// counts we reverse for
+	static float fReverseSpeed = 0.85f;	// speed we reverse in
+	static int nRotation = 50;  // rotation correction (very forgiving)
 	
 	float fLineFollowingSpeed = fLineFollowingStartSpeed*(nMaxCount-m_nLineCount)/nMaxCount;
 	fLineFollowingSpeed = fLineFollowingSpeed>fLineFollowingMinSpeed?fLineFollowingSpeed:fLineFollowingMinSpeed;
@@ -753,20 +790,19 @@ void KBot::ComputeLineAndWallXYR()
 	{
 		fSignal -= 1;		
 	}
-	m_mapR[knLineFollowing] = -50*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
+	m_mapR[knLineFollowing] = -nRotation*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
 
-	static int knMaxStopped = 25;
-	if ((0 == m_mapDigitalSensors[knLineRight]) && (0 == m_mapDigitalSensors[knLineLeft]) && (m_nStoppedCount < knMaxStopped))
+	if ((0 == m_mapDigitalSensors[knLineRight]) && (0 == m_mapDigitalSensors[knLineLeft]) && (m_nStoppedCount < nMaxStopped))
 	{
 		++m_nStoppedCount;
-		m_mapY[knLineFollowing] = -0.85f; // little bit backward
+		m_mapY[knLineFollowing] = -fReverseSpeed; // little bit backward
 	}
-	else if ((m_nStoppedCount > 0) && (m_nStoppedCount < knMaxStopped))
+	else if ((m_nStoppedCount > 0) && (m_nStoppedCount < nMaxStopped))
 	{
 		++m_nStoppedCount;
-		m_mapY[knLineFollowing] = -0.85f; // little bit backward		
+		m_mapY[knLineFollowing] = -fReverseSpeed; // little bit backward		
 	}
-	else if (m_nStoppedCount >= knMaxStopped)
+	else if (m_nStoppedCount >= nMaxStopped)
 	{
 		m_mapY[knLineFollowing] = 0.0f; // STOP			
 	}

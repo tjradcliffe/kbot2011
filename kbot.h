@@ -287,7 +287,10 @@ protected:
 	// accelerometer
 	//ADXL345_I2C* m_pAccelerometer;
 	
-	int m_autoMode;
+	int m_autoMode;	// not used
+	
+	bool m_bRecordOverride; // if true over-rides record/playback switch to record
+	bool m_bPreviousOverride; // true if on the last call to DisabledPeriodic we had an override
 	
 }; // class declaration
 
