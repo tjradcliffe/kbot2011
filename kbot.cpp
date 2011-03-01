@@ -770,10 +770,10 @@ void KBot::ComputeLineAndWallXYR()
 {
 	static float fLineFollowingStartSpeed = 1.0f;	// speed we start at
 	static float fLineFollowingMinSpeed = 0.35f;	// speed we ramp down to
-	static int nMaxCount = 50;		// counts we ramp down over
-	static int nMaxStopped = 25;		// counts we reverse for
+	static int nMaxCount = 50;		// counts we ramp down over (50 == 1 second)
+	static int nMaxStopped = 25;		// counts we reverse for (25 == 0.5 second)
 	static float fReverseSpeed = 0.85f;	// speed we reverse in
-	static int nRotation = 50;  // rotation correction (very forgiving)
+	static int nRotation = 50;  // rotation correction (very forgiving 10 - 100??)
 	
 	float fLineFollowingSpeed = fLineFollowingStartSpeed*(nMaxCount-m_nLineCount)/nMaxCount;
 	fLineFollowingSpeed = fLineFollowingSpeed>fLineFollowingMinSpeed?fLineFollowingSpeed:fLineFollowingMinSpeed;
