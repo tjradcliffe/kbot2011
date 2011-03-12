@@ -74,8 +74,8 @@ const int knRecordOverride = 18;	// button 9 on operator controller
 const int knX = 0;
 const int knY = 1;
 const int knR = 2;
-const int knRollAround = 8;
-const int knRollInOut = 7;
+const int knRollAround = 7;
+const int knRollInOut = 8;
 const int knArmUpDown = 6;
 
 // The cRIO slots for various interfaces
@@ -86,11 +86,11 @@ const int knRelaySlot = 8;
 //! The JAG ids for the various motors
 enum MotorMappings
 {
-	knRightFrontJaguar = 1,
-	knLeftFrontJaguar = 2,
-	knRightBackJaguar = 3,
-	knLeftBackJaguar = 4,
-	knArmJaguar = 8,
+	knRightFrontJaguar = 4,
+	knLeftFrontJaguar = 3,
+	knRightBackJaguar = 2,
+	knLeftBackJaguar = 1,//ok
+	knArmJaguar = 5,
 	knLowerRollerJaguar = 7,
 	knUpperRollerJaguar = 6,
 };

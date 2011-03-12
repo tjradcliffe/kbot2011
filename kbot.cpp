@@ -26,9 +26,11 @@ const int KBot::kPeriodicSpeed = 50; // Speed of periodic loops in Hz
 const float KBot::k_posP =0.015;  // pos values = DOWN on our robot
 const float KBot::k_posI =0.04;
 const float KBot::k_posD =0.025;
-const float KBot::k_negP =0.1;	// neg values = UP on our robot
+const float KBot::k_negP =0.25;//0.1;	// neg values = UP on our robot
 const float KBot::k_negI =0.1;
 const float KBot::k_negD =0.5;
+
+const float KBot::kArmGain = 5.0;
 
 // One and two-tube scoring filenames
 std::string strScoreOne = "score_one.dat";
@@ -930,7 +932,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		float fArmControl = pController->GetAxis(knArmUpDown);
 		if (fabs(fArmControl) > 0.05)	// controller over-ride
 		{
-			m_fArmSpeed = 12*fArmControl;
+			m_fArmSpeed = kArmGain*fArmControl;
 			
 			// This is necessary so that the arm will think it is at
 			// the "right" angle wherever it winds up
@@ -940,12 +942,20 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		{
 #ifdef PID_ARM
 			m_pArmPID->setDesiredValue(m_fTargetArmAngle);
-			m_fArmSpeed = 12*m_pArmPID->calcPID(m_mapAnalogSensors[knArmAngle]);
+			m_fArmSpeed = kArmGain*m_pArmPID->calcPID(m_mapAnalogSensors[knArmAngle]);
 #endif
 		}
 
-		m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
-		m_fUpperJawRollerSpeed = pController->GetAxis(knRollInOut)-pController->GetAxis(knRollAround);
+		if (fabs(pController->GetAxis(knRollInOut))<0.05)
+		{
+			m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut);
+			m_fUpperJawRollerSpeed = -pController->GetAxis(knRollInOut);
+		}
+		else
+		{
+			m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
+			m_fUpperJawRollerSpeed = -pController->GetAxis(knRollInOut)+pController->GetAxis(knRollAround);
+		}
 		if (pController->GetAxis(knRollInOut) > 0)
 		{
 			if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))

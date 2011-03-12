@@ -24,7 +24,7 @@ KbotPID::KbotPID(float p, float i, float d, float epsilon)
 	m_cycleCount = 0;
 	m_minCycleCount = 10; // Default
 	m_asymmetricPID = false;
-	m_strOutputFilename = ""; //"PID_data.csv";
+	m_strOutputFilename = "PID_data.csv";
 	m_pOutStream = 0;
 	if (0 != m_strOutputFilename.size())
 	{

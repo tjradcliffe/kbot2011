@@ -149,6 +149,7 @@ protected:
 	static const float k_negI;
 	static const float k_negD;
 	
+	static const float kArmGain;
 	//! Estimated robot position, orienation and velocity
 	std::vector<float> m_vecPosition;
 	float m_fOrientation; // positive CCW, 0->360
