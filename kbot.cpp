@@ -40,6 +40,8 @@ std::string strScoreTwo = "score_two.dat";
 const CANJaguar::ControlMode knDriveJaguarMode = CANJaguar::kSpeed;
 const float kfDriveJaguarConstant = 150;
 
+static int autoCount=0;
+
 /*!
 The constructor builds everything
 */
@@ -406,7 +408,7 @@ void KBot::AutonomousInit()
 	ResetRobot();
 	
 	//Check switches and set autonomous mode
-	m_autoMode = 0;
+	m_autoMode = 1;
 }
 
 /*!
@@ -519,9 +521,108 @@ Called on a clock during autonomous
  */
 void KBot::AutonomousPeriodic(void)
 {
-	GetWatchdog().Feed();
+	double wheelSpeeds[4];  // signs changed to get rotation right
+
 	
-	RunRobot(m_pPlaybackController);
+	GetWatchdog().Feed();
+	if (m_autoMode==0) 
+	{
+		RunRobot(m_pPlaybackController);
+	} else if (m_autoMode==1)
+	{
+		ReadSensors();			// read all the sensors into robot buffers
+		m_pPlaybackController->Update();	// update the controller buffers from hardware
+		if (autoCount==0)
+		{
+			wheelSpeeds[0]=0.0;
+			wheelSpeeds[1]=0.0;
+			wheelSpeeds[2]=0.0;
+			wheelSpeeds[3]=0.0;
+			m_fLowerJawRollerSpeed=0;
+			m_fUpperJawRollerSpeed=0;
+			m_fArmSpeed=0;
+			m_nJawPosition = 0;
+			m_nWristPosition = 0;
+			
+		} else if (autoCount<50*0.5) // Feed in tube for 1/4 second
+		{
+			wheelSpeeds[0]=0.0;
+			wheelSpeeds[1]=0.0;
+			wheelSpeeds[2]=0.0;
+			wheelSpeeds[3]=0.0;
+			m_fLowerJawRollerSpeed=0.75;
+			m_fUpperJawRollerSpeed=-0.75;
+			
+		} else if (autoCount<50*5) // Drive forward 5 secs at 1/4 speed
+		{							// while lifting arm
+			wheelSpeeds[0]=0.5;
+			wheelSpeeds[1]=0.5;
+			wheelSpeeds[2]=0.5;
+			wheelSpeeds[3]=0.5;
+			m_fArmSpeed = 0.3;
+			m_fLowerJawRollerSpeed=0.0;
+			m_fUpperJawRollerSpeed=0.0;
+			
+		} else if (autoCount<50*5.5) // Rotate tube forward
+		{
+			wheelSpeeds[0]=0.0;
+			wheelSpeeds[1]=0.0;
+			wheelSpeeds[2]=0.0;
+			wheelSpeeds[3]=0.0;
+			m_fArmSpeed = 0.0;
+			m_fLowerJawRollerSpeed=-0.75;
+			m_fUpperJawRollerSpeed=-0.75;
+		
+		} else if (autoCount<50*5.7) // Open jaw
+		{
+			wheelSpeeds[0]=0.0;
+			wheelSpeeds[1]=0.0;
+			wheelSpeeds[2]=0.0;
+			wheelSpeeds[3]=0.0;
+			m_fArmSpeed = 0.0;
+			m_fLowerJawRollerSpeed=0.0;
+			m_fUpperJawRollerSpeed=0.0;
+			m_nJawPosition = 1;
+		
+		} else if (autoCount<50*6.5) // Turn away
+		{
+			wheelSpeeds[0]=0.5;
+			wheelSpeeds[1]=-0.5;
+			wheelSpeeds[2]=-0.5;
+			wheelSpeeds[3]=0.5;
+			m_fArmSpeed = 0.0;
+			m_fLowerJawRollerSpeed=0.0;
+			m_fUpperJawRollerSpeed=0.0;
+		
+		} else  // Stop everything!!
+		{
+			wheelSpeeds[0]=0.0;
+			wheelSpeeds[1]=0.0;
+			wheelSpeeds[2]=0.0;
+			wheelSpeeds[3]=0.0;
+			m_fArmSpeed = 0.0;
+			m_fLowerJawRollerSpeed=0.0;
+			m_fUpperJawRollerSpeed=0.0;
+		
+		}
+		autoCount++;
+		m_pLeftFrontJaguar->Set(wheelSpeeds[0]*kfDriveJaguarConstant);// , syncGroup);
+		Wait(0.001);
+		m_pRightFrontJaguar->Set(-wheelSpeeds[1]*kfDriveJaguarConstant);// , syncGroup);
+		Wait(0.001);
+		m_pRightBackJaguar->Set(-wheelSpeeds[2]*kfDriveJaguarConstant);//, syncGroup);
+		Wait(0.001);
+		m_pLeftBackJaguar->Set(wheelSpeeds[3]*kfDriveJaguarConstant);// , syncGroup);
+		Wait(0.001);
+		m_pLowerRollerJaguar->Set(10*m_fLowerJawRollerSpeed);// , syncGroup);
+		Wait(0.001);
+		m_pUpperRollerJaguar->Set(10*m_fUpperJawRollerSpeed);// , syncGroup);
+		Wait(0.001);
+		m_pArmJaguar->Set(m_fArmSpeed);//, syncGroup);
+		UpdateActuators();		// set the motor and actuator states
+		ControlCompressor();	// manage the compressor state based on switch state
+		UpdateDriverStation();	// update the driver station 
+	}
 }
 
 /**
