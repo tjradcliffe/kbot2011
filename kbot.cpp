@@ -408,7 +408,15 @@ void KBot::AutonomousInit()
 	ResetRobot();
 	
 	//Check switches and set autonomous mode
-	m_autoMode = 1;
+	//m_autoMode = 1; //0=playback mode, 1=programmed sequence
+	if (0 == m_pOneTwoTubeSwitch->Get())
+	{
+		m_autoMode = 0;
+	} else
+	{
+		m_autoMode = 1;
+	}
+	autoCount = 0;
 }
 
 /*!
@@ -455,7 +463,7 @@ void KBot::DisabledPeriodic(void)
 	{
 		m_bPreviousOverride = false;		
 	}
-	UpdateDriverStation();	// will show line sensors as well
+	//UpdateDriverStation();	// will show line sensors as well
 	
 	if (nCount == 100)  // once per two seconds
 	{
@@ -544,7 +552,7 @@ void KBot::AutonomousPeriodic(void)
 			m_nJawPosition = 0;
 			m_nWristPosition = 0;
 			
-		} else if (autoCount<50*0.5) // Feed in tube for 1/4 second
+		} else if (autoCount<50*0.5) // Feed in tube for 0.5 second
 		{
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
@@ -553,17 +561,17 @@ void KBot::AutonomousPeriodic(void)
 			m_fLowerJawRollerSpeed=0.75;
 			m_fUpperJawRollerSpeed=-0.75;
 			
-		} else if (autoCount<50*5) // Drive forward 5 secs at 1/4 speed
+		} else if (autoCount<50*6.2) // Drive forward 5.7 secs at 3/4 speed
 		{							// while lifting arm
-			wheelSpeeds[0]=0.5;
-			wheelSpeeds[1]=0.5;
-			wheelSpeeds[2]=0.5;
-			wheelSpeeds[3]=0.5;
-			m_fArmSpeed = 0.3;
+			wheelSpeeds[0]=0.75;
+			wheelSpeeds[1]=0.75;
+			wheelSpeeds[2]=0.75;
+			wheelSpeeds[3]=0.75;
+			m_fArmSpeed = -3.0;
 			m_fLowerJawRollerSpeed=0.0;
 			m_fUpperJawRollerSpeed=0.0;
 			
-		} else if (autoCount<50*5.5) // Rotate tube forward
+		} else if (autoCount<50*6.7) // Rotate tube forward for 0.5 sec
 		{
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
@@ -573,7 +581,7 @@ void KBot::AutonomousPeriodic(void)
 			m_fLowerJawRollerSpeed=-0.75;
 			m_fUpperJawRollerSpeed=-0.75;
 		
-		} else if (autoCount<50*5.7) // Open jaw
+		} else if (autoCount<50*7.2) // Open jaw (0.5 sec)
 		{
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
@@ -584,7 +592,7 @@ void KBot::AutonomousPeriodic(void)
 			m_fUpperJawRollerSpeed=0.0;
 			m_nJawPosition = 1;
 		
-		} else if (autoCount<50*6.5) // Turn away
+		} else if (autoCount<50*8.0) // Turn away (0.8 sec)
 		{
 			wheelSpeeds[0]=0.5;
 			wheelSpeeds[1]=-0.5;
@@ -621,7 +629,7 @@ void KBot::AutonomousPeriodic(void)
 		m_pArmJaguar->Set(m_fArmSpeed);//, syncGroup);
 		UpdateActuators();		// set the motor and actuator states
 		ControlCompressor();	// manage the compressor state based on switch state
-		UpdateDriverStation();	// update the driver station 
+		//UpdateDriverStation();	// update the driver station 
 	}
 }
 
@@ -712,7 +720,7 @@ void KBot::RunRobot(Controller* pController)
 	ComputeWeights(pController);	// compute the weights for each input
 	UpdateActuators();		// set the motor and actuator states
 	ControlCompressor();	// manage the compressor state based on switch state
-	UpdateDriverStation();	// update the driver station 
+	//UpdateDriverStation();	// update the driver station 
 }
 
 /*!

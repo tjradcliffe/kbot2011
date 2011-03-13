@@ -89,7 +89,7 @@ enum MotorMappings
 	knRightFrontJaguar = 4,
 	knLeftFrontJaguar = 3,
 	knRightBackJaguar = 2,
-	knLeftBackJaguar = 1,//ok
+	knLeftBackJaguar = 8,
 	knArmJaguar = 5,
 	knLowerRollerJaguar = 7,
 	knUpperRollerJaguar = 6,
