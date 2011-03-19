@@ -40,6 +40,7 @@ std::string strScoreTwo = "score_two.dat";
 const CANJaguar::ControlMode knDriveJaguarMode = CANJaguar::kSpeed;
 const float kfDriveJaguarConstant = 150;
 
+static int autoState=0;
 static int autoCount=0;
 
 /*!
@@ -417,6 +418,7 @@ void KBot::AutonomousInit()
 		m_autoMode = 1;
 	}
 	autoCount = 0;
+	autoState = 0;
 }
 
 /*!
@@ -531,7 +533,6 @@ void KBot::AutonomousPeriodic(void)
 {
 	double wheelSpeeds[4];  // signs changed to get rotation right
 
-	
 	GetWatchdog().Feed();
 	if (m_autoMode==0) 
 	{
@@ -540,7 +541,9 @@ void KBot::AutonomousPeriodic(void)
 	{
 		ReadSensors();			// read all the sensors into robot buffers
 		m_pPlaybackController->Update();	// update the controller buffers from hardware
-		if (autoCount==0)
+		switch (autoState)
+		{
+		case 0:
 		{
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
@@ -551,8 +554,10 @@ void KBot::AutonomousPeriodic(void)
 			m_fArmSpeed=0;
 			m_nJawPosition = 0;
 			m_nWristPosition = 0;
-			
-		} else if (autoCount<50*0.5) // Feed in tube for 0.5 second
+			autoState++;
+			autoCount=0;
+		}
+		case 1:							// Feed tube in
 		{
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
@@ -560,19 +565,85 @@ void KBot::AutonomousPeriodic(void)
 			wheelSpeeds[3]=0.0;
 			m_fLowerJawRollerSpeed=0.75;
 			m_fUpperJawRollerSpeed=-0.75;
-			
-		} else if (autoCount<50*6.2) // Drive forward 5.7 secs at 3/4 speed
-		{							// while lifting arm
+			if (++autoCount >= kPeriodicSpeed*0.5)	// For 0.5 seconds
+			{
+				autoState++;
+				autoCount=0;
+			}
+		}	
+		case 2:							// Drive forward at 3/4 speed
+		{								// while lifting arm
+										// and using line following
+										// and stopping a set distance from the wall
 			wheelSpeeds[0]=0.75;
 			wheelSpeeds[1]=0.75;
 			wheelSpeeds[2]=0.75;
 			wheelSpeeds[3]=0.75;
+			
+			// Line following adjustment:
+			float fSignal = 0;
+			static int nRotation = 50;  // rotation correction (very forgiving 10 - 100??)
+			if (0 == m_mapDigitalSensors[knLineRight])
+			{
+				fSignal += 1;
+			}
+			if (0 == m_mapDigitalSensors[knLineLeft])
+			{
+				fSignal -= 1;		
+			}
+			float lineFollowRotationAdjust = -nRotation*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
+			wheelSpeeds[0] -= lineFollowRotationAdjust;
+			wheelSpeeds[1] += lineFollowRotationAdjust;
+			wheelSpeeds[2] += lineFollowRotationAdjust;
+			wheelSpeeds[3] -= lineFollowRotationAdjust;
+			
+			// Distance correction
+			static float targetDist = 300.0;		// 3 meters
+			static float startSlowingDist = 500.0;	// 5 meters
+			static float closeEnough = 5.0;
+			
+			float dist = (m_mapAnalogSensors[knLeftIRSensor]+m_mapAnalogSensors[knRightIRSensor])/2.0;
+			float gain = (dist-targetDist)/(startSlowingDist-targetDist);
+			// TODO: TRY: gain = (1-(1-gain)*(1-gain)); // Squared to make dropoff slower at start, faster at end to minimize running motor at stall voltage
+			if (dist<startSlowingDist)
+			{
+				for (int i=0; i<4; i++)
+				{
+					if (fabs(dist-targetDist) < closeEnough)
+					{
+						// TODO: wheelSpeeds[i] = 0.0;
+					} else
+					{
+						// TODO: wheelSpeeds[i] *= gain;
+					}
+				}
+			}
+			
 			m_fArmSpeed = -3.0;
 			m_fLowerJawRollerSpeed=0.0;
 			m_fUpperJawRollerSpeed=0.0;
-			
-		} else if (autoCount<50*6.7) // Rotate tube forward for 0.5 sec
+			if (++autoCount >= kPeriodicSpeed*5.7)	// For 5.7 seconds
+			{
+				autoState++;
+				autoCount=0;
+			}
+		}
+		case 3:							// Rotate tube forward
 		{
+			// TODO: Remove file output
+			std::string outputFilename = "DistanceFromWall.txt";
+			std::ofstream *m_pOutStream = 0;
+			if (0 != outputFilename.size())
+			{
+				m_pOutStream = new std::ofstream(outputFilename.c_str());
+			}
+			if (0 != m_pOutStream)
+			{
+				(*m_pOutStream) << m_mapAnalogSensors[knLeftIRSensor] << ", " << m_mapAnalogSensors[knRightIRSensor] << std::endl;
+			}
+			delete m_pOutStream;
+			
+			
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
 			wheelSpeeds[2]=0.0;
@@ -580,8 +651,13 @@ void KBot::AutonomousPeriodic(void)
 			m_fArmSpeed = 0.0;
 			m_fLowerJawRollerSpeed=-0.75;
 			m_fUpperJawRollerSpeed=-0.75;
-		
-		} else if (autoCount<50*7.2) // Open jaw (0.5 sec)
+			if (++autoCount >= kPeriodicSpeed*0.5)	// For 0.5 seconds
+			{
+				autoState++;
+				autoCount=0;
+			}
+		}
+		case 4:							// Open jaw
 		{
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
@@ -591,8 +667,13 @@ void KBot::AutonomousPeriodic(void)
 			m_fLowerJawRollerSpeed=0.0;
 			m_fUpperJawRollerSpeed=0.0;
 			m_nJawPosition = 1;
-		
-		} else if (autoCount<50*8.0) // Turn away (0.8 sec)
+			if (++autoCount >= kPeriodicSpeed*0.5)	// For 0.5 seconds
+			{
+				autoState++;
+				autoCount=0;
+			}
+		}
+		case 5:							// Turn away
 		{
 			wheelSpeeds[0]=0.5;
 			wheelSpeeds[1]=-0.5;
@@ -601,8 +682,13 @@ void KBot::AutonomousPeriodic(void)
 			m_fArmSpeed = 0.0;
 			m_fLowerJawRollerSpeed=0.0;
 			m_fUpperJawRollerSpeed=0.0;
-		
-		} else  // Stop everything!!
+			if (++autoCount >= kPeriodicSpeed*0.8)	// For 0.8 seconds
+			{
+				autoState++;
+				autoCount=0;
+			}
+		}
+		default:						// Stop everything!!
 		{
 			wheelSpeeds[0]=0.0;
 			wheelSpeeds[1]=0.0;
@@ -613,7 +699,7 @@ void KBot::AutonomousPeriodic(void)
 			m_fUpperJawRollerSpeed=0.0;
 		
 		}
-		autoCount++;
+		}
 		m_pLeftFrontJaguar->Set(wheelSpeeds[0]*kfDriveJaguarConstant);// , syncGroup);
 		Wait(0.001);
 		m_pRightFrontJaguar->Set(-wheelSpeeds[1]*kfDriveJaguarConstant);// , syncGroup);
