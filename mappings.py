@@ -16,5 +16,4 @@ knArmMiddle = knButtons+2
 knArmHigh = knButtons+3
 knWristIn = knButtons+4
 knWristOut = knButtons+6
-knJawClosed = knButtons+5
 knJawOpen = knButtons+7

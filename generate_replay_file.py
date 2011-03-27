@@ -6,7 +6,7 @@ from replay_parser import parseLine
 import sys
 
 sys.argv.append("test_spec.txt")
-sys.argv.append("score_test.dat")
+sys.argv.append("score_one.dat")
 
 # make space for lists and fill them with zeros
 nTimePoints = 750 # 750 ticks per auto run (15 seconds)
