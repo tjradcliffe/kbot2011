@@ -1,10 +1,24 @@
+# simple scoring script
+
+#pull tube into jaw
 tube in at 0.75 from 0 to 0.5
+
+# drive slowly off the start for 1 second
 drive forward at 0.25 from 0.5 to 1.5
+
+# line follow and raise the arm
 follow from 1.5 to 7.5
 arm high at 3
+
+# should be stopped at wall by line-follower
+# so drive forward just a bit to get tube on peg
 drive forward at 0.25 from 7.5 to 8
+
+# now score: roll tube down, open the jaw, turn and pull back
 tube rolldown at 1.0 from 8 to 8.5
 jaw open from 8.35 to 9
 turn left at .75 from 8.75 to 9
 drive backward at 1 from 8.75 to 9.5
+
+# do a little turn at the end to get oriented for teleop
 turn left at 0.5 from 10 to 11
