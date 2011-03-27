@@ -1,0 +1,10 @@
+tube in at 0.75 from 0 to 0.5
+drive forward at 0.25 from 0.5 to 1.5
+follow from 1.5 to 7.5
+arm high at 3
+drive forward at 0.25 from 7.5 to 8
+tube rolldown at 1.0 from 8 to 8.5
+jaw open from 8.35 to 9
+turn left at .75 from 8.75 to 9
+drive backward at 1 from 8.75 to 9.5
+turn left at 0.5 from 10 to 11
