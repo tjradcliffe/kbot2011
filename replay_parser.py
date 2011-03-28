@@ -103,11 +103,11 @@ def parseDrive(lstLine, lstAxes, lstButtons, nLine):
 def parseTurn(lstLine, lstAxes, lstButtons, nLine):
     strOrientation = lstLine[1].upper()
     if "LEFT" == strOrientation:
-        nAxis = knX
-        nSign = -1 # left is negative X
+        nAxis = knR
+        nSign = -1 # left is negative R
     elif "RIGHT" == strOrientation:
-        nAxis = knX
-        nSign =  1 # right is positive X
+        nAxis = knR
+        nSign =  1 # right is positive R
     else:
         raise ParseException("Did not recognize ORIENTATION: "+lstLine[1], nLine)
 
