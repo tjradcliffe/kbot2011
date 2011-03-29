@@ -55,7 +55,7 @@ JAW OPEN FROM <TIME> TO <TIME>
 
 ARM <POSITION> AT <TIME>
 
-where <POSITION> is one of PARKED, MIDDLE, LOW, HIGH
+where <POSITION> is one of MIDDLE, LOW, BOTTOM, HIGH, TOP
 
 (this will have the effect of pressing the appropriate arm preset button
 for half a second.)
@@ -67,6 +67,7 @@ FOLLOW FROM <TIME> TO <TIME>
 """
 #DRIVE <DIRECTION> AT <SPEED> FROM <TIME> TO <TIME>
 #where <DIRECTION> is one of LEFT, RIGHT, FORWARD, BACKWARD
+
 def parseDrive(lstLine, lstAxes, lstButtons, nLine):
     strDirection = lstLine[1].upper()
     if "LEFT" == strDirection:
@@ -92,8 +93,8 @@ def parseDrive(lstLine, lstAxes, lstButtons, nLine):
         raise ParseException("Could not convert one of speed, start or stop time to float", nLIne)
         
     # now fill in the appropriate array
-    nStart = int(50*fStart)
-    nStop = int(50*fStop)
+    nStart = int(knCountsPerSecond*fStart)
+    nStop = int(knCountsPerSecond*fStop)
     for nI in range(nStart, nStop):
         lstAxes[nAxis][nI] = nSign*fSpeed
             
@@ -102,11 +103,11 @@ def parseDrive(lstLine, lstAxes, lstButtons, nLine):
 def parseTurn(lstLine, lstAxes, lstButtons, nLine):
     strOrientation = lstLine[1].upper()
     if "LEFT" == strOrientation:
-        nAxis = knX
-        nSign = -1 # left is negative X
+        nAxis = knR
+        nSign = -1 # left is negative R
     elif "RIGHT" == strOrientation:
-        nAxis = knX
-        nSign =  1 # right is positive X
+        nAxis = knR
+        nSign =  1 # right is positive R
     else:
         raise ParseException("Did not recognize ORIENTATION: "+lstLine[1], nLine)
 
@@ -118,8 +119,8 @@ def parseTurn(lstLine, lstAxes, lstButtons, nLine):
         raise ParseException("Could not convert one of speed, start or stop time to float", nLIne)
         
     # now fill in the appropriate array
-    nStart = int(50*fStart)
-    nStop = int(50*fStop)
+    nStart = int(knCountsPerSecond*fStart)
+    nStop = int(knCountsPerSecond*fStop)
     for nI in range(nStart, nStop):
         lstAxes[nAxis][nI] = nSign*fSpeed
                
@@ -151,8 +152,8 @@ def parseTube(lstLine, lstAxes, lstButtons, nLine):
         raise ParseException("Could not convert one of speed, start or stop time to float", nLIne)
         
     # now fill in the appropriate array
-    nStart = int(50*fStart)
-    nStop = int(50*fStop)
+    nStart = int(knCountsPerSecond*fStart)
+    nStop = int(knCountsPerSecond*fStop)
     for nI in range(nStart, nStop):
         lstAxes[nAxis][nI] = nSign*fSpeed        
     
@@ -183,15 +184,15 @@ def parseArm(lstLine, lstAxes, lstButtons, nLine):
             fSpeed = float(lstLine[3])
             fStart = float(lstLine[5])
             fStop = float(lstLine[7])
-            nStart = int(50*fStart)
-            nStop = int(50*fStop)
+            nStart = int(knCountsPerSecond*fStart)
+            nStop = int(knCountsPerSecond*fStop)
             for nI in range(nStart, nStop):
                 lstAxes[nAxis][nI] = nSign*fSpeed           
         else:
             fStart = float(lstLine[3])
             fStop = fStart + 0.5
-            nStart = int(50*fStart)
-            nStop= int(50*fStop)
+            nStart = int(knCountsPerSecond*fStart)
+            nStop= int(knCountsPerSecond*fStop)
             for nI in range(nStart, nStop):
                 lstButtons[nButton][nI] = 1                       
     except Exception, e:
@@ -212,8 +213,8 @@ def parseWrist(lstLine, lstAxes, lstButtons, nLine):
     try:
         fStart = float(lstLine[3])
         fStop = fStart + 0.5
-        nStart = int(50*fStart)
-        nStop= int(50*fStop)
+        nStart = int(knCountsPerSecond*fStart)
+        nStop= int(knCountsPerSecond*fStop)
         for nI in range(nStart, nStop):
                 lstButtons[nButton][nI] = 1                       
     except Exception, e:
@@ -227,8 +228,8 @@ def parseJaw(lstLine, lstAxes, lstButtons, nLine):
     try:
         fStart = float(lstLine[3])
         fStop = float(lstLine[5])
-        nStart = int(50*fStart)
-        nStop= int(50*fStop)
+        nStart = int(knCountsPerSecond*fStart)
+        nStop= int(knCountsPerSecond*fStop)
         for nI in range(nStart, nStop):
                 lstButtons[nButton][nI] = 1                       
     except Exception, e:
@@ -242,8 +243,8 @@ def parseFollow(lstLine, lstAxes, lstButtons, nLine):
     try:
         fStart = float(lstLine[2])
         fStop = float(lstLine[4])
-        nStart = int(50*fStart)
-        nStop= int(50*fStop)
+        nStart = int(knCountsPerSecond*fStart)
+        nStop= int(knCountsPerSecond*fStop)
         for nI in range(nStart, nStop):
                 lstButtons[nButton][nI] = 1                       
     except Exception, e:

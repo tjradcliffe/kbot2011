@@ -17,3 +17,7 @@ knArmHigh = knButtons+3
 knWristIn = knButtons+4
 knWristOut = knButtons+6
 knJawOpen = knButtons+7
+
+# time related constants
+knCountsPerSecond = 50 # number of iterations per second (Hz)
+knAutonomousTime = 15 # seconds

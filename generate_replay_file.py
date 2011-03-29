@@ -9,7 +9,7 @@ sys.argv.append("test_spec.txt")
 sys.argv.append("score_one.dat")
 
 # make space for lists and fill them with zeros
-nTimePoints = 750 # 750 ticks per auto run (15 seconds)
+nTimePoints = knAutonomousTime*knCountsPerSecond # 750 ticks per auto run (15 seconds), Defined in mappings.
 lstAxes = []
 for nI in range(0,10):  # five axes per two controllers
     lstAxis = [0 for nI in range(0,nTimePoints)]
