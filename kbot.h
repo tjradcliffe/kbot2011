@@ -21,7 +21,7 @@ class AutonomousController;
 class Controller;
 //class I2C_Ultrasound;
 class DistanceSensor;
-class ScoreThreeController;
+class ProgrammedController;
 class TeleopController;
 
 class KbotPID;
@@ -45,7 +45,7 @@ motors and actuators.
 */ 
 class KBot : public IterativeRobot
 {
-	friend class ScoreThreeController;
+	friend class ProgrammedController;
 	
 public:
 	
@@ -259,7 +259,7 @@ protected:
 	// Declare variables for the controllers
 	TeleopController *m_pTeleopController;
 	AutonomousController *m_pPlaybackController;
-	ScoreThreeController *m_pScoreThreeController;
+	ProgrammedController *m_pProgrammedController;
 
 	// compressor control and sensor
 	Relay	*m_pCompressorRelay;

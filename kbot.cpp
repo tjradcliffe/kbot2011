@@ -6,6 +6,7 @@
 #include "constants.h"
 #include "DistanceSensor.h"
 #include "I2C_Ultrasound.h"
+#include "programmed_controller.h"
 #include "score_three_controller.h"
 #include "teleop_controller.h"
 #include "KbotPID.h"
@@ -39,9 +40,6 @@ std::string strScoreTwo = "score_two.dat";
 // Jag mode (CANJaguar::kSpeed/CANJaguar::kVoltage) and constant (150/12)
 const CANJaguar::ControlMode knDriveJaguarMode = CANJaguar::kSpeed;
 const float kfDriveJaguarConstant = 150;
-
-static int autoState=0;
-static int autoCount=0;
 
 /*!
 The constructor builds everything
@@ -99,6 +97,7 @@ KBot::KBot(void)
 	// controllers
 	m_pTeleopController = new TeleopController();
 	m_pPlaybackController = new AutonomousController(this);
+	m_pProgrammedController = new ProgrammedController(this);
 	
 	// gyro
 	m_pGyro = new Gyro(knAnalogSlot, knGyro);
@@ -417,8 +416,6 @@ void KBot::AutonomousInit()
 	{
 		m_autoMode = 1;
 	}
-	autoCount = 0;
-	autoState = 0;
 }
 
 /*!
@@ -531,191 +528,14 @@ Called on a clock during autonomous
  */
 void KBot::AutonomousPeriodic(void)
 {
-	double wheelSpeeds[4];  // signs changed to get rotation right
-
 	GetWatchdog().Feed();
 	if (m_autoMode==0) 
 	{
 		RunRobot(m_pPlaybackController);
-	} else if (m_autoMode==1)
+	} 
+	else if (m_autoMode==1)
 	{
-		ReadSensors();			// read all the sensors into robot buffers
-		m_pPlaybackController->Update();	// update the controller buffers from hardware
-		switch (autoState)
-		{
-		case 0:
-		{
-			wheelSpeeds[0]=0.0;
-			wheelSpeeds[1]=0.0;
-			wheelSpeeds[2]=0.0;
-			wheelSpeeds[3]=0.0;
-			m_fLowerJawRollerSpeed=0;
-			m_fUpperJawRollerSpeed=0;
-			m_fArmSpeed=0;
-			m_nJawPosition = 0;
-			m_nWristPosition = 0;
-			autoState++;
-			autoCount=0;
-		}
-		case 1:							// Feed tube in
-		{
-			wheelSpeeds[0]=0.0;
-			wheelSpeeds[1]=0.0;
-			wheelSpeeds[2]=0.0;
-			wheelSpeeds[3]=0.0;
-			m_fLowerJawRollerSpeed=0.75;
-			m_fUpperJawRollerSpeed=-0.75;
-			if (++autoCount >= kPeriodicSpeed*0.5)	// For 0.5 seconds
-			{
-				autoState++;
-				autoCount=0;
-			}
-		}	
-		case 2:							// Drive forward at 3/4 speed
-		{								// while lifting arm
-										// and using line following
-										// and stopping a set distance from the wall
-			wheelSpeeds[0]=0.75;
-			wheelSpeeds[1]=0.75;
-			wheelSpeeds[2]=0.75;
-			wheelSpeeds[3]=0.75;
-			
-			// Line following adjustment:
-			float fSignal = 0;
-			static int nRotation = 50;  // rotation correction (very forgiving 10 - 100??)
-			if (0 == m_mapDigitalSensors[knLineRight])
-			{
-				fSignal += 1;
-			}
-			if (0 == m_mapDigitalSensors[knLineLeft])
-			{
-				fSignal -= 1;		
-			}
-			float lineFollowRotationAdjust = -nRotation*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
-			wheelSpeeds[0] -= lineFollowRotationAdjust;
-			wheelSpeeds[1] += lineFollowRotationAdjust;
-			wheelSpeeds[2] += lineFollowRotationAdjust;
-			wheelSpeeds[3] -= lineFollowRotationAdjust;
-			
-			// Distance correction
-			static float targetDist = 300.0;		// 3 meters
-			static float startSlowingDist = 500.0;	// 5 meters
-			static float closeEnough = 5.0;
-			
-			float dist = (m_mapAnalogSensors[knLeftIRSensor]+m_mapAnalogSensors[knRightIRSensor])/2.0;
-			float gain = (dist-targetDist)/(startSlowingDist-targetDist);
-			// TODO: TRY: gain = (1-(1-gain)*(1-gain)); // Squared to make dropoff slower at start, faster at end to minimize running motor at stall voltage
-			if (dist<startSlowingDist)
-			{
-				for (int i=0; i<4; i++)
-				{
-					if (fabs(dist-targetDist) < closeEnough)
-					{
-						// TODO: wheelSpeeds[i] = 0.0;
-					} else
-					{
-						// TODO: wheelSpeeds[i] *= gain;
-					}
-				}
-			}
-			
-			m_fArmSpeed = -3.0;
-			m_fLowerJawRollerSpeed=0.0;
-			m_fUpperJawRollerSpeed=0.0;
-			if (++autoCount >= kPeriodicSpeed*5.7)	// For 5.7 seconds
-			{
-				autoState++;
-				autoCount=0;
-			}
-		}
-		case 3:							// Rotate tube forward
-		{
-			// TODO: Remove file output
-			std::string outputFilename = "DistanceFromWall.txt";
-			std::ofstream *m_pOutStream = 0;
-			if (0 != outputFilename.size())
-			{
-				m_pOutStream = new std::ofstream(outputFilename.c_str());
-			}
-			if (0 != m_pOutStream)
-			{
-				(*m_pOutStream) << m_mapAnalogSensors[knLeftIRSensor] << ", " << m_mapAnalogSensors[knRightIRSensor] << std::endl;
-			}
-			delete m_pOutStream;
-			
-			
-			wheelSpeeds[0]=0.0;
-			wheelSpeeds[1]=0.0;
-			wheelSpeeds[2]=0.0;
-			wheelSpeeds[3]=0.0;
-			m_fArmSpeed = 0.0;
-			m_fLowerJawRollerSpeed=-0.75;
-			m_fUpperJawRollerSpeed=-0.75;
-			if (++autoCount >= kPeriodicSpeed*0.5)	// For 0.5 seconds
-			{
-				autoState++;
-				autoCount=0;
-			}
-		}
-		case 4:							// Open jaw
-		{
-			wheelSpeeds[0]=0.0;
-			wheelSpeeds[1]=0.0;
-			wheelSpeeds[2]=0.0;
-			wheelSpeeds[3]=0.0;
-			m_fArmSpeed = 0.0;
-			m_fLowerJawRollerSpeed=0.0;
-			m_fUpperJawRollerSpeed=0.0;
-			m_nJawPosition = 1;
-			if (++autoCount >= kPeriodicSpeed*0.5)	// For 0.5 seconds
-			{
-				autoState++;
-				autoCount=0;
-			}
-		}
-		case 5:							// Turn away
-		{
-			wheelSpeeds[0]=0.5;
-			wheelSpeeds[1]=-0.5;
-			wheelSpeeds[2]=-0.5;
-			wheelSpeeds[3]=0.5;
-			m_fArmSpeed = 0.0;
-			m_fLowerJawRollerSpeed=0.0;
-			m_fUpperJawRollerSpeed=0.0;
-			if (++autoCount >= kPeriodicSpeed*0.8)	// For 0.8 seconds
-			{
-				autoState++;
-				autoCount=0;
-			}
-		}
-		default:						// Stop everything!!
-		{
-			wheelSpeeds[0]=0.0;
-			wheelSpeeds[1]=0.0;
-			wheelSpeeds[2]=0.0;
-			wheelSpeeds[3]=0.0;
-			m_fArmSpeed = 0.0;
-			m_fLowerJawRollerSpeed=0.0;
-			m_fUpperJawRollerSpeed=0.0;
-		
-		}
-		}
-		m_pLeftFrontJaguar->Set(wheelSpeeds[0]*kfDriveJaguarConstant);// , syncGroup);
-		Wait(0.001);
-		m_pRightFrontJaguar->Set(-wheelSpeeds[1]*kfDriveJaguarConstant);// , syncGroup);
-		Wait(0.001);
-		m_pRightBackJaguar->Set(-wheelSpeeds[2]*kfDriveJaguarConstant);//, syncGroup);
-		Wait(0.001);
-		m_pLeftBackJaguar->Set(wheelSpeeds[3]*kfDriveJaguarConstant);// , syncGroup);
-		Wait(0.001);
-		m_pLowerRollerJaguar->Set(10*m_fLowerJawRollerSpeed);// , syncGroup);
-		Wait(0.001);
-		m_pUpperRollerJaguar->Set(10*m_fUpperJawRollerSpeed);// , syncGroup);
-		Wait(0.001);
-		m_pArmJaguar->Set(m_fArmSpeed);//, syncGroup);
-		UpdateActuators();		// set the motor and actuator states
-		ControlCompressor();	// manage the compressor state based on switch state
-		//UpdateDriverStation();	// update the driver station 
+		RunRobot(m_pProgrammedController);
 	}
 }
 
