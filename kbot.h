@@ -285,6 +285,9 @@ protected:
 	DigitalInput* m_pTubeRight;
 	AnalogChannel* m_pTubeIR;
 	
+	// pole detect switch
+	DigitalInput* m_pPoleDetect;
+	
 	// retro-reflector (if we use it)
 	DigitalInput* m_pRetroReflector;
 	
