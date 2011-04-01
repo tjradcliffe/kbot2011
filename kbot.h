@@ -198,6 +198,7 @@ protected:
 	
 	//! mini-bot deployer position we want (1 == out, 0 == in)
 	int m_nDeployerPosition;
+	int m_nReleasePosition;
 	
 	//! jaw roller speeds
 	float m_fLowerJawRollerSpeed;
@@ -209,6 +210,15 @@ protected:
 	Relay	*m_pRedLightRelay;
 	Relay	*m_pWhiteLightRelay;
 
+	// Light servos
+	Servo	*m_pBlueLightServo;
+	Servo	*m_pRedLightServo;
+	Servo	*m_pWhiteLightServo;
+	
+	// Minibot servos
+	Servo	*m_pDeployMinibotArmServo;
+	Servo	*m_pReleaseMinibotServo;	
+	
 	///*************ACTUATORS******************
 
 	void BuildJags();
@@ -274,6 +284,9 @@ protected:
 	DigitalInput* m_pTubeLeft;
 	DigitalInput* m_pTubeRight;
 	AnalogChannel* m_pTubeIR;
+	
+	// pole detect switch
+	DigitalInput* m_pPoleDetect;
 	
 	// retro-reflector (if we use it)
 	DigitalInput* m_pRetroReflector;

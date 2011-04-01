@@ -64,7 +64,8 @@ const int knBlueTubeButton = 2;		// Blue X button
 const int knWhiteTubeButton = 3;	// Yellow Y button
 const int knLineFollowButton = 4;	// Left front button
 const int knStandardTurnButton = 5;	// Right front button
-const int knDeployerOutButton = 7;	// Right little button
+const int knDeployerOutButton = 6;	// Left little button
+const int knReleaseMinibotButton = 7;//Right little button
 
 const int knAutoScoreAxis = 9;	// Left D-button on Logitech
 
@@ -151,6 +152,15 @@ enum RelayMappings
 	knBlueLightRelay = 3,
 };
 
+enum ServoMappings
+{
+	knBlueLightServo = 1,
+	knRedLightServo = 2,
+	knWhiteLightServo = 3,
+	knDeployMinibotArmServo = 4,
+	knReleaseMinibotServo = 5,
+};
+
 //! The analog sensor mappings
 enum AnalogMapping
 {
@@ -185,6 +195,8 @@ enum DigitalMapping
 	knLineBack = 10,   // (not implemented) (0 = line) 12 V
 	knLineLeft = 11,   // (CHECKED) (0 = line)  12 V
 	knLineRight = 12,  // (CHECKED) (0 = line)  12 V
+	
+	knPoleDetect = 1,	// TODO: KEVIN should it be 9?
 };
 
 //! The calculation mappings

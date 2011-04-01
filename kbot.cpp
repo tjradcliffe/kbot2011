@@ -73,6 +73,7 @@ KBot::KBot(void)
 	m_pArmAngle = new AnalogChannel(knAnalogSlot, knArmAngle);
 
 	m_nDeployerPosition = 0;	// IN
+	m_nReleasePosition = 0;		// NOT released
 	m_nWristPosition = 0;		// FOLDED
 	m_nJawPosition = 0;			// CLOSED
 	
@@ -90,6 +91,17 @@ KBot::KBot(void)
 	m_pWhiteLightRelay = new Relay(knWhiteLightRelay, Relay::kForwardOnly);
 	m_nLightState = knAllLightsOff;
 
+	// Light servos
+	m_pBlueLightServo = new Servo(knBlueLightServo);
+	m_pRedLightServo = new Servo(knRedLightServo);
+	m_pWhiteLightServo = new Servo(knWhiteLightServo);
+	
+	// Minibot servos
+	m_pDeployMinibotArmServo = new Servo(knDeployMinibotArmServo);
+	m_pDeployMinibotArmServo->Set(-1.0);
+	m_pReleaseMinibotServo = new Servo(knReleaseMinibotServo);
+	m_pReleaseMinibotServo->Set(-1.0);
+	
 	// Compressor controls
 	m_pCompressorRelay = new Relay(knCompressorRelay,Relay::kForwardOnly);
 	m_pCompressorLimit = new DigitalInput(knCompressorLimit);
@@ -125,6 +137,9 @@ KBot::KBot(void)
 	m_pTubeLeft = new DigitalInput(knDigitalSlot, knTubeLeft);
 	m_pTubeRight = new DigitalInput(knDigitalSlot, knTubeRight);
 	m_pTubeIR = new AnalogChannel(knAnalogSlot, knTubeIR);
+	
+	// pole detect switches on minibot deploy arm
+	m_pPoleDetect = new DigitalInput(knDigitalSlot,knPoleDetect);
 	
 	// retro-reflector (if we use it)
 	m_pRetroReflector = new DigitalInput(knDigitalSlot, knRetroReflector);
@@ -209,6 +224,10 @@ void KBot::ResetRobot(bool bRecordTeleop)
 	m_pRedLightRelay->Set(Relay::kOff);
 	m_pWhiteLightRelay->Set(Relay::kOff);
 
+	m_pBlueLightServo->Set(0.0);
+	m_pRedLightServo->Set(0.0);
+	m_pWhiteLightServo->Set(0.0);
+	
 	// handle switches
 	if (0 == m_pRecoverSwitch->Get())
 	{
@@ -360,6 +379,7 @@ void KBot::RobotInit()
 	m_nWristPosition = 0;  // in
 	m_nJawPosition = 0;  // open
 	m_nDeployerPosition = 0; // in
+	m_nReleasePosition = 0; // not released
 	
 	m_fLowerJawRollerSpeed = 0.0f;
 	m_fUpperJawRollerSpeed = 0.0f;
@@ -704,6 +724,7 @@ void KBot::ReadSensors()
 	m_mapDigitalSensors[knRetroReflector] = m_pRetroReflector->Get();
 	m_mapDigitalSensors[knTubeLeft] = m_pTubeLeft->Get();
 	m_mapDigitalSensors[knTubeRight] = m_pTubeRight->Get();
+	m_mapDigitalSensors[knPoleDetect] = m_pPoleDetect->Get();
 	m_mapDigitalSensors[knCompressorLimit] = m_pCompressorLimit->Get();
 	m_mapDigitalSensors[knRecordSwitch] = m_pRecordSwitch->Get();
 	m_mapDigitalSensors[knOneTwoTubeSwitch] = m_pOneTwoTubeSwitch->Get();
@@ -740,7 +761,7 @@ void KBot::ComputeLights(Controller* pController)
 	{
 		m_nLightState = knAllLightsOn;
 	}
-	else if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
+	else if ((0 == m_mapDigitalSensors[knTubeRight]) && (0 == m_mapDigitalSensors[knTubeLeft]))
 	{
 		if (m_nWristPosition == 1)
 		{
@@ -900,6 +921,15 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		m_nDeployerPosition = 0;
 	}
 		
+	if (pController->GetButton(knReleaseMinibotButton) && (1 == m_nDeployerPosition)&&(0 == m_mapDigitalSensors[knPoleDetect]))
+	{
+		m_nReleasePosition = 1;
+	}
+	else
+	{
+		m_nReleasePosition = 0;
+	}
+	
 	if (pController->GetButton(knArmParked))
 	{
 		m_fTargetArmAngle = 845.0f;
@@ -973,7 +1003,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		}
 		if (pController->GetAxis(knRollInOut) > 0)
 		{
-			if ((m_mapDigitalSensors[knTubeRight] == 0) && (m_mapDigitalSensors[knTubeLeft] == 0))
+			if ((0==m_mapDigitalSensors[knTubeRight]) && (0==m_mapDigitalSensors[knTubeLeft]))
 			{
 				m_fLowerJawRollerSpeed = (m_mapAnalogSensors[knTubeIR]-300.0)/200.0;
 				m_fUpperJawRollerSpeed = -m_fLowerJawRollerSpeed;
@@ -1118,12 +1148,22 @@ void KBot::UpdateDeployer()
 	if (m_nDeployerPosition == 0)	// Deployer IN
 	{
 		m_pDeployerInSolenoid->Set(true);
-		m_pDeployerOutSolenoid->Set(false);		
+		m_pDeployerOutSolenoid->Set(false);	
+		m_pDeployMinibotArmServo->Set(-1.0);
 	}
 	else	// Deployer OUT
 	{
 		m_pDeployerInSolenoid->Set(false);
-		m_pDeployerOutSolenoid->Set(true);		
+		m_pDeployerOutSolenoid->Set(true);
+		m_pDeployMinibotArmServo->Set(1.0);
+	}
+	if (m_nReleasePosition == 0)	// DONT release minibot
+	{
+		m_pReleaseMinibotServo->Set(-1.0);
+	}
+	else	// Release minibot
+	{
+		m_pReleaseMinibotServo->Set(1.0);
 	}
 }
 
@@ -1143,36 +1183,60 @@ void KBot::UpdateLights()
 		m_pRedLightRelay->Set(Relay::kOff);
 		m_pBlueLightRelay->Set(Relay::kOff);
 		m_pWhiteLightRelay->Set(Relay::kOff);
+
+		m_pBlueLightServo->Set(0.0);
+		m_pRedLightServo->Set(0.0);
+		m_pWhiteLightServo->Set(0.0);
 	}
 	else if (knRedLight == m_nLightState)
 	{
 		m_pRedLightRelay->Set(Relay::kForward);
 		m_pBlueLightRelay->Set(Relay::kOff);
 		m_pWhiteLightRelay->Set(Relay::kOff);
+
+		m_pBlueLightServo->Set(0.0);
+		m_pRedLightServo->Set(1.0);
+		m_pWhiteLightServo->Set(0.0);
 	}
 	else if (knBlueLight == m_nLightState)
 	{
 		m_pRedLightRelay->Set(Relay::kOff);
 		m_pBlueLightRelay->Set(Relay::kForward);
 		m_pWhiteLightRelay->Set(Relay::kOff);
+
+		m_pBlueLightServo->Set(1.0);
+		m_pRedLightServo->Set(0.0);
+		m_pWhiteLightServo->Set(0.0);
 	}
 	else if (knWhiteLight == m_nLightState)
 	{
 		m_pRedLightRelay->Set(Relay::kOff);
 		m_pBlueLightRelay->Set(Relay::kOff);
 		m_pWhiteLightRelay->Set(Relay::kForward);
+
+		m_pBlueLightServo->Set(0.0);
+		m_pRedLightServo->Set(0.0);
+		m_pWhiteLightServo->Set(1.0);
 	}
 	else if (m_nLightState == knAllLightsOn)
 	{
 		m_pRedLightRelay->Set(Relay::kForward);
 		m_pBlueLightRelay->Set(Relay::kForward);
 		m_pWhiteLightRelay->Set(Relay::kForward);
+
+		m_pBlueLightServo->Set(1.0);
+		m_pRedLightServo->Set(1.0);
+		m_pWhiteLightServo->Set(1.0);
 	}
 	else if (m_nLightState == knTubeCaptureSignal)
 	{
 		m_pRedLightRelay->Set(Relay::kForward);
 		m_pBlueLightRelay->Set(Relay::kForward);
 		m_pWhiteLightRelay->Set(Relay::kOff);		
+
+		m_pBlueLightServo->Set(1.0);
+		m_pRedLightServo->Set(1.0);
+		m_pWhiteLightServo->Set(0.0);
 	}
 }
 
