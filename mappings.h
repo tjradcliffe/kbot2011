@@ -181,11 +181,11 @@ enum AnalogMapping
 //! The digital sensor mappings
 enum DigitalMapping
 {
-	knCompressorLimit = 2,
+	knCompressorLimit = 4,
 
 	knRecordSwitch = 8,	    // TOP--CHECKED 0 (light) is playback, 1 is record
 	knOneTwoTubeSwitch = 3,	// 2nd--CHECKED 0 (light) is one tube, 1 is two tubes
-	knMirrorSwitch = 4,		// 3rd--CHECKED 0 (light) is right of field (mirrored), 1 is left (unmirrored)	
+	knMirrorSwitch = 2,		// 3rd--CHECKED 0 (light) is right of field (mirrored), 1 is left (unmirrored)	
 	knRecoverSwitch = 13,	// 4th--0 is recover all recorded files from playback
 	knFifthSwitch = 14,	    // 5th--"What is this quintesence of switch?"
 
@@ -196,7 +196,7 @@ enum DigitalMapping
 	knLineLeft = 11,   // (CHECKED) (0 = line)  12 V
 	knLineRight = 12,  // (CHECKED) (0 = line)  12 V
 	
-	knPoleDetect = 1,	// TODO: KEVIN should it be 9?
+	knPoleDetect = 9,
 };
 
 //! The calculation mappings

@@ -41,6 +41,11 @@ std::string strScoreTwo = "score_two.dat";
 const CANJaguar::ControlMode knDriveJaguarMode = CANJaguar::kSpeed;
 const float kfDriveJaguarConstant = 150;
 
+bool leftLineWasZero = false;
+bool leftLineWasOne = false;
+bool rightLineWasZero = false;
+bool rightLineWasOne = false;
+
 /*!
 The constructor builds everything
 */
@@ -49,6 +54,11 @@ KBot::KBot(void)
 	std::cerr << "In Constructor" << std::endl;
 	IterativeRobot::SetPeriod(1.0/kPeriodicSpeed);
 	std::cerr << "Periodic rate ="<< IterativeRobot::GetLoopsPerSec() << " loops per second." << std::endl;
+
+	leftLineWasZero = false;
+	leftLineWasOne = false;
+	rightLineWasZero = false;
+	rightLineWasOne = false;
 	
 	// Build the Jags
 	BuildJags();
@@ -98,9 +108,9 @@ KBot::KBot(void)
 	
 	// Minibot servos
 	m_pDeployMinibotArmServo = new Servo(knDeployMinibotArmServo);
-	m_pDeployMinibotArmServo->Set(-1.0);
+	m_pDeployMinibotArmServo->Set(-1.5);
 	m_pReleaseMinibotServo = new Servo(knReleaseMinibotServo);
-	m_pReleaseMinibotServo->Set(-1.0);
+	m_pReleaseMinibotServo->Set(0.5);
 	
 	// Compressor controls
 	m_pCompressorRelay = new Relay(knCompressorRelay,Relay::kForwardOnly);
@@ -150,6 +160,9 @@ KBot::KBot(void)
 	m_pMirrorSwitch = new DigitalInput(knDigitalSlot, knMirrorSwitch);
 	m_pOneTwoTubeSwitch = new DigitalInput(knDigitalSlot, knOneTwoTubeSwitch);
 	m_pFifthSwitch = new DigitalInput(knDigitalSlot, knFifthSwitch);
+
+	m_bMinibotDeployed = false;
+
 }
 
 /*!
@@ -260,6 +273,7 @@ void KBot::ResetRobot(bool bRecordTeleop)
 		m_pTeleopController->SetFilename("");
 		m_pTeleopController->Reset();		
 		m_pPlaybackController->Reset();
+		m_pProgrammedController->Reset();
 		
 		if (0 == m_pOneTwoTubeSwitch->Get())	
 		{
@@ -279,6 +293,7 @@ void KBot::ResetRobot(bool bRecordTeleop)
 			m_pPlaybackController->SetMirror(false);			
 		}
 	}
+	m_bMinibotDeployed = false;
 }
 
 /*!
@@ -404,6 +419,16 @@ void KBot::DisabledInit()
 	m_pArmJaguar->SetSafetyEnabled(false);
 	m_pLowerRollerJaguar->SetSafetyEnabled(false);
 	m_pUpperRollerJaguar->SetSafetyEnabled(false);
+	
+	std::string m_strOutputFilename = "LineSensorData.txt";
+	std::ofstream *m_pOutStream = 0;
+	if (0 != m_strOutputFilename.size())
+	{
+		m_pOutStream = new std::ofstream(m_strOutputFilename.c_str());
+	}
+	(*m_pOutStream) << (leftLineWasZero?"true":"false") << " " << (leftLineWasOne?"true":"false") << " " << (rightLineWasZero?"true":"false") << " " << (rightLineWasOne?"true":"false") << std::endl;
+	delete m_pOutStream;
+
 }
 
 /*!
@@ -823,10 +848,20 @@ void KBot::ComputeLineAndWallXYR()
 	if (0 == m_mapDigitalSensors[knLineRight])
 	{
 		fSignal += 1;
+
+		rightLineWasZero = true;
+	} else
+	{
+		rightLineWasOne = true;
 	}
 	if (0 == m_mapDigitalSensors[knLineLeft])
 	{
-		fSignal -= 1;		
+		fSignal -= 1;
+		
+		leftLineWasZero = true;
+	} else
+	{
+		leftLineWasOne = true;
 	}
 	m_mapR[knLineFollowing] = -nRotation*m_mapY[knLineFollowing]*kfRotationFactor*fSignal;
 
@@ -914,6 +949,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 	{
 		// TODO: NEED TO PUT ARM UP!!!
 		m_nDeployerPosition = 1;
+		m_bMinibotDeployed = true;
 	}
 	else
 	{
@@ -921,7 +957,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 		m_nDeployerPosition = 0;
 	}
 		
-	if (pController->GetButton(knReleaseMinibotButton) && (1 == m_nDeployerPosition)&&(0 == m_mapDigitalSensors[knPoleDetect]))
+	if (pController->GetButton(knReleaseMinibotButton) /* && (m_bMinibotDeployed) REDUNDANT! */ && (0 == m_mapDigitalSensors[knPoleDetect]))
 	{
 		m_nReleasePosition = 1;
 	}
@@ -991,7 +1027,7 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 #endif
 		}
 
-		if (fabs(pController->GetAxis(knRollInOut))<0.05)
+		if (fabs(pController->GetAxis(knRollInOut))>0.75 && fabs(pController->GetAxis(knRollAround))<0.5)
 		{
 			m_fLowerJawRollerSpeed = pController->GetAxis(knRollInOut);
 			m_fUpperJawRollerSpeed = -pController->GetAxis(knRollInOut);
@@ -1149,7 +1185,7 @@ void KBot::UpdateDeployer()
 	{
 		m_pDeployerInSolenoid->Set(true);
 		m_pDeployerOutSolenoid->Set(false);	
-		m_pDeployMinibotArmServo->Set(-1.0);
+		m_pDeployMinibotArmServo->Set(-1.5);
 	}
 	else	// Deployer OUT
 	{
@@ -1159,11 +1195,11 @@ void KBot::UpdateDeployer()
 	}
 	if (m_nReleasePosition == 0)	// DONT release minibot
 	{
-		m_pReleaseMinibotServo->Set(-1.0);
+		m_pReleaseMinibotServo->Set(0.5);
 	}
 	else	// Release minibot
 	{
-		m_pReleaseMinibotServo->Set(1.0);
+		m_pReleaseMinibotServo->Set(-1.0);
 	}
 }
 

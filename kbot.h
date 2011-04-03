@@ -303,6 +303,8 @@ protected:
 	
 	int m_autoMode;	// not used
 	
+	bool m_bMinibotDeployed;
+	
 	bool m_bRecordOverride; // if true over-rides record/playback switch to record
 	bool m_bPreviousOverride; // true if on the last call to DisabledPeriodic we had an override
 	
