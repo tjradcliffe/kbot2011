@@ -215,10 +215,6 @@ protected:
 	Servo	*m_pRedLightServo;
 	Servo	*m_pWhiteLightServo;
 	
-	// Minibot servos
-	Servo	*m_pDeployMinibotArmServo;
-	Servo	*m_pReleaseMinibotServo;	
-	
 	///*************ACTUATORS******************
 
 	void BuildJags();
@@ -246,6 +242,7 @@ protected:
 	Solenoid *m_pJawClosedSolenoid;
 	Solenoid *m_pDeployerOutSolenoid;
 	Solenoid *m_pDeployerInSolenoid;
+	Solenoid *m_pReleaseMinibotSolenoid;
 	
 	///*************SENSORS******************
 	// The gyro is used for maintaining orientation

@@ -64,10 +64,9 @@ const int knBlueTubeButton = 2;		// Blue X button
 const int knWhiteTubeButton = 3;	// Yellow Y button
 const int knLineFollowButton = 4;	// Left front button
 const int knStandardTurnButton = 5;	// Right front button
-const int knDeployerOutButton = 6;	// Left little button
 const int knReleaseMinibotButton = 7;//Right little button
 
-const int knAutoScoreAxis = 9;	// Left D-button on Logitech
+const int knReleaseMinibotAxis = 9;	// Left D-button on Logitech
 
 const int knRecordOverride = 18;	// button 9 on operator controller
 
@@ -141,6 +140,7 @@ enum SolenoidMappings
 	knJawOpenSolenoid = 4,
 	knDeployerOutSolenoid = 5,
 	knDeployerInSolenoid = 6,
+	knReleaseMinibotSolenoid = 7,
 };
 
 //! The relay ids
@@ -157,8 +157,6 @@ enum ServoMappings
 	knBlueLightServo = 1,
 	knRedLightServo = 2,
 	knWhiteLightServo = 3,
-	knDeployMinibotArmServo = 4,
-	knReleaseMinibotServo = 5,
 };
 
 //! The analog sensor mappings

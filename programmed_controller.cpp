@@ -81,7 +81,7 @@ void ProgrammedController::Update()
 		static float closeEnough = 5.0;
 		
 		float dist = (m_pRobot->m_mapAnalogSensors[knLeftIRSensor]+m_pRobot->m_mapAnalogSensors[knRightIRSensor])/2.0;
-		float gain = (dist-targetDist)/(startSlowingDist-targetDist);
+		// float gain = (dist-targetDist)/(startSlowingDist-targetDist);
 		// TODO: TRY: gain = (1-(1-gain)*(1-gain)); // Squared to make dropoff slower at start, faster at end to minimize running motor at stall voltage
 		if (dist<startSlowingDist)
 		{

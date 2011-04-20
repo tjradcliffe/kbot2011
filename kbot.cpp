@@ -94,6 +94,7 @@ KBot::KBot(void)
 	m_pJawClosedSolenoid = new Solenoid(knRelaySlot, knJawClosedSolenoid);
 	m_pDeployerOutSolenoid = new Solenoid(knRelaySlot, knDeployerOutSolenoid);
 	m_pDeployerInSolenoid = new Solenoid(knRelaySlot, knDeployerInSolenoid);
+	m_pReleaseMinibotSolenoid = new Solenoid(knRelaySlot, knReleaseMinibotSolenoid);
 	
 	// Light relays
 	m_pBlueLightRelay = new Relay(knBlueLightRelay, Relay::kForwardOnly);
@@ -105,12 +106,6 @@ KBot::KBot(void)
 	m_pBlueLightServo = new Servo(knBlueLightServo);
 	m_pRedLightServo = new Servo(knRedLightServo);
 	m_pWhiteLightServo = new Servo(knWhiteLightServo);
-	
-	// Minibot servos
-	m_pDeployMinibotArmServo = new Servo(knDeployMinibotArmServo);
-	m_pDeployMinibotArmServo->Set(-1.5);
-	m_pReleaseMinibotServo = new Servo(knReleaseMinibotServo);
-	m_pReleaseMinibotServo->Set(0.5);
 	
 	// Compressor controls
 	m_pCompressorRelay = new Relay(knCompressorRelay,Relay::kForwardOnly);
@@ -832,7 +827,7 @@ Compute the rotation we want based on line following
 void KBot::ComputeLineAndWallXYR()
 {
 	static float fLineFollowingStartSpeed = 1.0f;	// speed we start at
-	static float fLineFollowingMinSpeed = 0.35f;	// speed we ramp down to
+	static float fLineFollowingMinSpeed = 0.25f;	// speed we ramp down to
 	static int nMaxCount = 50;		// counts we ramp down over (50 == 1 second)
 	static int nMaxStopped = 25;		// counts we reverse for (25 == 0.5 second)
 	static float fReverseSpeed = 0.85f;	// speed we reverse in
@@ -921,31 +916,7 @@ Compute all the arm functions from the controller values
 */
 void KBot::ComputeArmAndDeployer(Controller *pController)
 {
-	static int nAutoScoreCount = 0;	// local static for autoscore
-	if (pController->GetAxis(knAutoScoreAxis) < -0.8f)
-	{
-		if (nAutoScoreCount < 10) // 0.2 s
-		{
-			// starting with roll-out
-			pController->SetAxis(knRollInOut, 1.0f);
-		}
-		else if (nAutoScoreCount < 30)
-		{
-			pController->SetButton(knJawOpen, true);
-			pController->SetAxis(knArmUpDown, 1.0f);			
-		}
-		else if (nAutoScoreCount < 50)
-		{
-			pController->SetAxis(knArmUpDown, 1.0f);						
-		}
-		++nAutoScoreCount;
-	}
-	else
-	{
-		nAutoScoreCount = 0; // reset the counter for next go
-	}
-	
-	if (pController->GetButton(knDeployerOutButton))
+	if (pController->GetAxis(knReleaseMinibotAxis))
 	{
 		// TODO: NEED TO PUT ARM UP!!!
 		m_nDeployerPosition = 1;
@@ -1185,21 +1156,19 @@ void KBot::UpdateDeployer()
 	{
 		m_pDeployerInSolenoid->Set(true);
 		m_pDeployerOutSolenoid->Set(false);	
-		m_pDeployMinibotArmServo->Set(-1.5);
 	}
 	else	// Deployer OUT
 	{
 		m_pDeployerInSolenoid->Set(false);
 		m_pDeployerOutSolenoid->Set(true);
-		m_pDeployMinibotArmServo->Set(1.0);
 	}
 	if (m_nReleasePosition == 0)	// DONT release minibot
 	{
-		m_pReleaseMinibotServo->Set(0.5);
+		m_pReleaseMinibotSolenoid->Set(false);
 	}
 	else	// Release minibot
 	{
-		m_pReleaseMinibotServo->Set(-1.0);
+		m_pReleaseMinibotSolenoid->Set(true);
 	}
 }
 
