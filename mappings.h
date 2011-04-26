@@ -138,9 +138,8 @@ enum SolenoidMappings
 	knWristOutSolenoid = 2,
 	knJawClosedSolenoid = 3,
 	knJawOpenSolenoid = 4,
-	knDeployerOutSolenoid = 5,
-	knDeployerInSolenoid = 6,
-	knReleaseMinibotSolenoid = 7,
+	knDeployerSolenoid = 5,
+	knReleaseMinibotSolenoid = 6
 };
 
 //! The relay ids

@@ -240,8 +240,7 @@ protected:
 	Solenoid *m_pWristInSolenoid;
 	Solenoid *m_pJawOpenSolenoid;
 	Solenoid *m_pJawClosedSolenoid;
-	Solenoid *m_pDeployerOutSolenoid;
-	Solenoid *m_pDeployerInSolenoid;
+	Solenoid *m_pDeployerSolenoid;
 	Solenoid *m_pReleaseMinibotSolenoid;
 	
 	///*************SENSORS******************

@@ -92,8 +92,7 @@ KBot::KBot(void)
 	m_pWristInSolenoid = new Solenoid(knRelaySlot, knWristInSolenoid);
 	m_pJawOpenSolenoid = new Solenoid(knRelaySlot, knJawOpenSolenoid);
 	m_pJawClosedSolenoid = new Solenoid(knRelaySlot, knJawClosedSolenoid);
-	m_pDeployerOutSolenoid = new Solenoid(knRelaySlot, knDeployerOutSolenoid);
-	m_pDeployerInSolenoid = new Solenoid(knRelaySlot, knDeployerInSolenoid);
+	m_pDeployerSolenoid = new Solenoid(knRelaySlot, knDeployerSolenoid);
 	m_pReleaseMinibotSolenoid = new Solenoid(knRelaySlot, knReleaseMinibotSolenoid);
 	
 	// Light relays
@@ -792,6 +791,10 @@ void KBot::ComputeLights(Controller* pController)
 			m_nLightState = knAllLightsOff;		
 		}
 	}	
+	else if (0 == m_mapDigitalSensors[knPoleDetect])
+	{
+		m_nLightState = knAllLightsOn;
+	}
 	else
 	{
 		m_nLightState = knAllLightsOff;
@@ -918,17 +921,15 @@ void KBot::ComputeArmAndDeployer(Controller *pController)
 {
 	if (pController->GetAxis(knReleaseMinibotAxis))
 	{
-		// TODO: NEED TO PUT ARM UP!!!
 		m_nDeployerPosition = 1;
 		m_bMinibotDeployed = true;
 	}
 	else
 	{
-		// TODO: NEED TO PUT ARM UP!!!
 		m_nDeployerPosition = 0;
 	}
 		
-	if (pController->GetButton(knReleaseMinibotButton) /* && (m_bMinibotDeployed) REDUNDANT! */ && (0 == m_mapDigitalSensors[knPoleDetect]))
+	if (pController->GetButton(knReleaseMinibotButton) && (0 == m_mapDigitalSensors[knPoleDetect]))
 	{
 		m_nReleasePosition = 1;
 	}
@@ -1154,13 +1155,11 @@ void KBot::UpdateDeployer()
 {
 	if (m_nDeployerPosition == 0)	// Deployer IN
 	{
-		m_pDeployerInSolenoid->Set(true);
-		m_pDeployerOutSolenoid->Set(false);	
+		m_pDeployerSolenoid->Set(false);
 	}
 	else	// Deployer OUT
 	{
-		m_pDeployerInSolenoid->Set(false);
-		m_pDeployerOutSolenoid->Set(true);
+		m_pDeployerSolenoid->Set(true);
 	}
 	if (m_nReleasePosition == 0)	// DONT release minibot
 	{
